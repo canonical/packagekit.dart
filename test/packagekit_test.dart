@@ -15,6 +15,8 @@ class MockPackageKitRoot extends DBusObject {
     var properties = <String, DBusValue>{
       'BackendDescription': DBusString(server.backendDescription),
       'BackendName': DBusString(server.backendName),
+      'MimeTypes': DBusArray(DBusSignature('s'),
+          server.mimeTypes.map((value) => DBusString(value))),
       'VersionMajor': DBusUint32(server.versionMajor),
       'VersionMicro': DBusUint32(server.versionMicro),
       'VersionMinor': DBusUint32(server.versionMinor)
@@ -28,6 +30,7 @@ class MockPackageKitServer extends DBusClient {
 
   final String backendDescription;
   final String backendName;
+  final List<String> mimeTypes;
   final int versionMajor;
   final int versionMicro;
   final int versionMinor;
@@ -35,6 +38,7 @@ class MockPackageKitServer extends DBusClient {
   MockPackageKitServer(DBusAddress clientAddress,
       {this.backendDescription = '',
       this.backendName = '',
+      this.mimeTypes = const [],
       this.versionMajor = 0,
       this.versionMicro = 0,
       this.versionMinor = 0})
@@ -81,6 +85,26 @@ void main() {
 
     expect(client.backendName, equals('aptcc'));
     expect(client.backendDescription, equals('APTcc'));
+
+    await client.close();
+  });
+
+  test('mime types', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var packagekit = MockPackageKitServer(clientAddress, mimeTypes: [
+      'application/vnd.debian.binary-package',
+      'application/x-deb'
+    ]);
+    await packagekit.start();
+
+    var client = PackageKitClient(bus: DBusClient(clientAddress));
+    await client.connect();
+
+    expect(client.mimeTypes,
+        equals(['application/vnd.debian.binary-package', 'application/x-deb']));
 
     await client.close();
   });
