@@ -13,6 +13,8 @@ class MockPackageKitRoot extends DBusObject {
   @override
   Future<DBusMethodResponse> getAllProperties(String interface) async {
     var properties = <String, DBusValue>{
+      'BackendDescription': DBusString(server.backendDescription),
+      'BackendName': DBusString(server.backendName),
       'VersionMajor': DBusUint32(server.versionMajor),
       'VersionMicro': DBusUint32(server.versionMicro),
       'VersionMinor': DBusUint32(server.versionMinor)
@@ -24,12 +26,18 @@ class MockPackageKitRoot extends DBusObject {
 class MockPackageKitServer extends DBusClient {
   late final MockPackageKitRoot _root;
 
+  final String backendDescription;
+  final String backendName;
   final int versionMajor;
   final int versionMicro;
   final int versionMinor;
 
   MockPackageKitServer(DBusAddress clientAddress,
-      {this.versionMajor = 0, this.versionMinor = 0, this.versionMicro = 0})
+      {this.backendDescription = '',
+      this.backendName = '',
+      this.versionMajor = 0,
+      this.versionMicro = 0,
+      this.versionMinor = 0})
       : super(clientAddress);
 
   Future<void> start() async {
@@ -55,6 +63,24 @@ void main() {
     expect(client.versionMajor, equals(1));
     expect(client.versionMinor, equals(2));
     expect(client.versionMicro, equals(3));
+
+    await client.close();
+  });
+
+  test('backend', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var packagekit = MockPackageKitServer(clientAddress,
+        backendName: 'aptcc', backendDescription: 'APTcc');
+    await packagekit.start();
+
+    var client = PackageKitClient(bus: DBusClient(clientAddress));
+    await client.connect();
+
+    expect(client.backendName, equals('aptcc'));
+    expect(client.backendDescription, equals('APTcc'));
 
     await client.close();
   });

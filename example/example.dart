@@ -5,5 +5,6 @@ void main() async {
   await client.connect();
   print(
       'Server version: ${client.versionMajor}.${client.versionMinor}.${client.versionMicro}');
+  print('Backend: ${client.backendDescription} (${client.backendName})');
   await client.close();
 }

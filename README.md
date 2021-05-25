@@ -9,6 +9,7 @@ import 'package:packagekit/packagekit.dart';
 var client = PackageKitClient();
 await client.connect();
 print('Server version: ${client.versionMajor}.${client.versionMinor}.${client.versionMicro}');
+print('Backend: ${client.backendDescription} (${client.backendName})');
 await client.close();
 ```
 
