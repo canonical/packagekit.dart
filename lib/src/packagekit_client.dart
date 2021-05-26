@@ -594,6 +594,13 @@ class PackageKitTransaction {
         replySignature: DBusSignature(''));
   }
 
+  Future<void> getRepositoryList(
+      {Set<PackageKitFilter> filter = const {}}) async {
+    await _object.callMethod(_packageKitTransactionInterfaceName, 'GetRepoList',
+        [DBusUint64(_encodeFilters(filter))],
+        replySignature: DBusSignature(''));
+  }
+
   Future<void> getUpdates({Set<PackageKitFilter> filter = const {}}) async {
     await _object.callMethod(_packageKitTransactionInterfaceName, 'GetUpdates',
         [DBusUint64(_encodeFilters(filter))],
