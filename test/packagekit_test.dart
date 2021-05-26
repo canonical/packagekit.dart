@@ -15,8 +15,7 @@ class MockPackageKitRoot extends DBusObject {
     var properties = <String, DBusValue>{
       'BackendDescription': DBusString(server.backendDescription),
       'BackendName': DBusString(server.backendName),
-      'MimeTypes': DBusArray(DBusSignature('s'),
-          server.mimeTypes.map((value) => DBusString(value))),
+      'MimeTypes': DBusArray.string(server.mimeTypes),
       'VersionMajor': DBusUint32(server.versionMajor),
       'VersionMicro': DBusUint32(server.versionMicro),
       'VersionMinor': DBusUint32(server.versionMinor)
