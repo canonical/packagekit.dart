@@ -74,6 +74,12 @@ class MockPackageKitTransaction extends DBusObject {
         }
         emitFinished(ExitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
+      case 'GetRepoList':
+        for (var repo in server.repositories) {
+          emitRepoDetail(repo.id, repo.description, repo.enabled);
+        }
+        emitFinished(ExitSuccess, server.transactionRuntime);
+        return DBusMethodSuccessResponse();
       case 'GetUpdates':
         for (var package in server.installedPackages) {
           for (var source in server.availablePackages.keys) {
@@ -869,6 +875,40 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
         ]));
     await transaction.removePackages([packageId]);
+
+    await client.close();
+  });
+
+  test('get repository list', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var packagekit = MockPackageKitServer(clientAddress,
+        transactionRuntime: 1234,
+        repositories: [
+          MockRepository('enabled-repo1', 'Main', true),
+          MockRepository('enabled-repo2', 'Updates', true),
+          MockRepository('disabled-repo', 'Universe', false)
+        ]);
+    await packagekit.start();
+
+    var client = PackageKitClient(bus: DBusClient(clientAddress));
+    await client.connect();
+
+    var transaction = await client.createTransaction();
+    expect(
+        transaction.events,
+        emitsInOrder([
+          PackageKitRepositoryDetailEvent(
+              repoId: 'enabled-repo1', description: 'Main', enabled: true),
+          PackageKitRepositoryDetailEvent(
+              repoId: 'enabled-repo2', description: 'Updates', enabled: true),
+          PackageKitRepositoryDetailEvent(
+              repoId: 'disabled-repo', description: 'Universe', enabled: false),
+          PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
+        ]));
+    await transaction.getRepositoryList();
 
     await client.close();
   });
