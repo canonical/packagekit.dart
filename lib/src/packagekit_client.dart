@@ -3,7 +3,8 @@ import 'dart:async';
 import 'package:dbus/dbus.dart';
 
 /// D-Bus interface names.
-const _serverInterfaceName = 'org.freedesktop.PackageKit';
+const _packageKitBusName = 'org.freedesktop.PackageKit';
+const _packageKitInterfaceName = 'org.freedesktop.PackageKit';
 
 enum PackageKitFilter {
   unknown,
@@ -182,13 +183,13 @@ class PackageKitClient {
   PackageKitClient({DBusClient? bus})
       : _bus = bus ?? DBusClient.system(),
         _closeBus = bus == null {
-    _root = DBusRemoteObject(_bus, 'org.freedesktop.PackageKit',
+    _root = DBusRemoteObject(_bus, _packageKitBusName,
         DBusObjectPath('/org/freedesktop/PackageKit'));
   }
 
   /// Connects to the PackageKit daemon.
   Future<void> connect() async {
-    _properties.addAll(await _root.getAllProperties(_serverInterfaceName));
+    _properties.addAll(await _root.getAllProperties(_packageKitInterfaceName));
   }
 
   /// Terminates the connection to the PackageKit daemon. If a client remains unclosed, the Dart process may not terminate.
