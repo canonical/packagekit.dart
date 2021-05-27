@@ -21,6 +21,7 @@ class MockPackageKitRoot extends DBusObject {
       'Groups': DBusUint64(server.groups),
       'MimeTypes': DBusArray.string(server.mimeTypes),
       'NetworkState': DBusUint32(server.networkState),
+      'Roles': DBusUint64(server.roles),
       'VersionMajor': DBusUint32(server.versionMajor),
       'VersionMicro': DBusUint32(server.versionMicro),
       'VersionMinor': DBusUint32(server.versionMinor)
@@ -40,6 +41,7 @@ class MockPackageKitServer extends DBusClient {
   final int groups;
   final List<String> mimeTypes;
   final int networkState;
+  final int roles;
   final int versionMajor;
   final int versionMicro;
   final int versionMinor;
@@ -53,6 +55,7 @@ class MockPackageKitServer extends DBusClient {
       this.groups = 0,
       this.mimeTypes = const [],
       this.networkState = 0,
+      this.roles = 0,
       this.versionMajor = 0,
       this.versionMicro = 0,
       this.versionMinor = 0})
@@ -185,6 +188,53 @@ void main() {
           PackageKitGroup.science,
           PackageKitGroup.documentation,
           PackageKitGroup.electronics
+        }));
+
+    await client.close();
+  });
+
+  test('roles', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var packagekit = MockPackageKitServer(clientAddress, roles: 0x1f2fefffe);
+    await packagekit.start();
+
+    var client = PackageKitClient(bus: DBusClient(clientAddress));
+    await client.connect();
+
+    expect(
+        client.roles,
+        equals({
+          PackageKitRole.cancel,
+          PackageKitRole.dependsOn,
+          PackageKitRole.getDetails,
+          PackageKitRole.getFiles,
+          PackageKitRole.getPackages,
+          PackageKitRole.getRepositoryList,
+          PackageKitRole.requiredBy,
+          PackageKitRole.getUpdateDetail,
+          PackageKitRole.getUpdates,
+          PackageKitRole.installFiles,
+          PackageKitRole.installPackages,
+          PackageKitRole.installSignature,
+          PackageKitRole.refreshCache,
+          PackageKitRole.removePackages,
+          PackageKitRole.repoEnable,
+          PackageKitRole.resolve,
+          PackageKitRole.searchDetails,
+          PackageKitRole.searchFile,
+          PackageKitRole.searchGroup,
+          PackageKitRole.searchName,
+          PackageKitRole.updatePackages,
+          PackageKitRole.whatProvides,
+          PackageKitRole.downloadPackages,
+          PackageKitRole.getOldTransactions,
+          PackageKitRole.repairSystem,
+          PackageKitRole.getDetailsLocal,
+          PackageKitRole.getFilesLocal,
+          PackageKitRole.repoRemove
         }));
 
     await client.close();

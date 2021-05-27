@@ -96,6 +96,53 @@ Set<PackageKitGroup> _decodeGroups(int mask) {
 
 enum PackageKitNetworkState { unknown, offline, online, wired, wifi, mobile }
 
+enum PackageKitRole {
+  unknown,
+  cancel,
+  dependsOn,
+  getDetails,
+  getFiles,
+  getPackages,
+  getRepositoryList,
+  requiredBy,
+  getUpdateDetail,
+  getUpdates,
+  installFiles,
+  installPackages,
+  installSignature,
+  refreshCache,
+  removePackages,
+  repoEnable,
+  repoSetData,
+  resolve,
+  searchDetails,
+  searchFile,
+  searchGroup,
+  searchName,
+  updatePackages,
+  whatProvides,
+  acceptEula,
+  downloadPackages,
+  getDistroUpgrades,
+  getCategories,
+  getOldTransactions,
+  repairSystem,
+  getDetailsLocal,
+  getFilesLocal,
+  repoRemove,
+  upgradeSystem
+}
+
+Set<PackageKitRole> _decodeRoles(int mask) {
+  var roles = <PackageKitRole>{};
+  for (var value in PackageKitRole.values) {
+    if ((mask & (1 << value.index)) != 0) {
+      roles.add(value);
+    }
+  }
+  return roles;
+}
+
 /// A client that connects to PackageKit.
 class PackageKitClient {
   /// The bus this client is connected to.
@@ -122,6 +169,8 @@ class PackageKitClient {
       .children
       .map((value) => (value as DBusString).value)
       .toList();
+  Set<PackageKitRole> get roles =>
+      _decodeRoles((_properties['Roles'] as DBusUint64).value);
   PackageKitNetworkState get networkState => PackageKitNetworkState
       .values[(_properties['NetworkState'] as DBusUint32).value];
   int get versionMajor => (_properties['VersionMajor'] as DBusUint32).value;
