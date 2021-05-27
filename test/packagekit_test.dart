@@ -18,6 +18,7 @@ class MockPackageKitRoot extends DBusObject {
       'BackendName': DBusString(server.backendName),
       'DistroId': DBusString(server.distroId),
       'Filters': DBusUint64(server.filters),
+      'Groups': DBusUint64(server.groups),
       'MimeTypes': DBusArray.string(server.mimeTypes),
       'NetworkState': DBusUint32(server.networkState),
       'VersionMajor': DBusUint32(server.versionMajor),
@@ -36,6 +37,7 @@ class MockPackageKitServer extends DBusClient {
   final String backendName;
   final String distroId;
   final int filters;
+  final int groups;
   final List<String> mimeTypes;
   final int networkState;
   final int versionMajor;
@@ -48,6 +50,7 @@ class MockPackageKitServer extends DBusClient {
       this.backendName = '',
       this.distroId = '',
       this.filters = 0,
+      this.groups = 0,
       this.mimeTypes = const [],
       this.networkState = 0,
       this.versionMajor = 0,
@@ -142,6 +145,46 @@ void main() {
           PackageKitFilter.arch,
           PackageKitFilter.application,
           PackageKitFilter.downloaded
+        }));
+
+    await client.close();
+  });
+
+  test('groups', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var packagekit = MockPackageKitServer(clientAddress, groups: 0xe8d6fcfc);
+    await packagekit.start();
+
+    var client = PackageKitClient(bus: DBusClient(clientAddress));
+    await client.connect();
+
+    expect(
+        client.groups,
+        equals({
+          PackageKitGroup.accessories,
+          PackageKitGroup.adminTools,
+          PackageKitGroup.communication,
+          PackageKitGroup.desktopGnome,
+          PackageKitGroup.desktopKde,
+          PackageKitGroup.desktopOther,
+          PackageKitGroup.fonts,
+          PackageKitGroup.games,
+          PackageKitGroup.graphics,
+          PackageKitGroup.internet,
+          PackageKitGroup.legacy,
+          PackageKitGroup.localization,
+          PackageKitGroup.multimedia,
+          PackageKitGroup.network,
+          PackageKitGroup.other,
+          PackageKitGroup.programming,
+          PackageKitGroup.publishing,
+          PackageKitGroup.system,
+          PackageKitGroup.science,
+          PackageKitGroup.documentation,
+          PackageKitGroup.electronics
         }));
 
     await client.close();

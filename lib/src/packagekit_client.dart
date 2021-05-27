@@ -46,6 +46,54 @@ Set<PackageKitFilter> _decodeFilters(int mask) {
   return filters;
 }
 
+enum PackageKitGroup {
+  unknown,
+  accessibility,
+  accessories,
+  adminTools,
+  communication,
+  desktopGnome,
+  desktopKde,
+  desktopOther,
+  desktopXfce,
+  education,
+  fonts,
+  games,
+  graphics,
+  internet,
+  legacy,
+  localization,
+  maps,
+  multimedia,
+  network,
+  office,
+  other,
+  powerManagement,
+  programming,
+  publishing,
+  repos,
+  security,
+  servers,
+  system,
+  virtualization,
+  science,
+  documentation,
+  electronics,
+  collections,
+  vendor,
+  newest
+}
+
+Set<PackageKitGroup> _decodeGroups(int mask) {
+  var groups = <PackageKitGroup>{};
+  for (var value in PackageKitGroup.values) {
+    if ((mask & (1 << value.index)) != 0) {
+      groups.add(value);
+    }
+  }
+  return groups;
+}
+
 enum PackageKitNetworkState { unknown, offline, online, wired, wifi, mobile }
 
 /// A client that connects to PackageKit.
@@ -68,6 +116,8 @@ class PackageKitClient {
   String get distroId => (_properties['DistroId'] as DBusString).value;
   Set<PackageKitFilter> get filters =>
       _decodeFilters((_properties['Filters'] as DBusUint64).value);
+  Set<PackageKitGroup> get groups =>
+      _decodeGroups((_properties['Groups'] as DBusUint64).value);
   List<String> get mimeTypes => (_properties['MimeTypes'] as DBusArray)
       .children
       .map((value) => (value as DBusString).value)
