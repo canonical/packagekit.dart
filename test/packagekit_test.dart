@@ -19,6 +19,7 @@ class MockPackageKitRoot extends DBusObject {
       'DistroId': DBusString(server.distroId),
       'Filters': DBusUint64(server.filters),
       'Groups': DBusUint64(server.groups),
+      'Locked': DBusBoolean(server.locked),
       'MimeTypes': DBusArray.string(server.mimeTypes),
       'NetworkState': DBusUint32(server.networkState),
       'Roles': DBusUint64(server.roles),
@@ -39,6 +40,7 @@ class MockPackageKitServer extends DBusClient {
   final String distroId;
   final int filters;
   final int groups;
+  final bool locked;
   final List<String> mimeTypes;
   final int networkState;
   final int roles;
@@ -53,6 +55,7 @@ class MockPackageKitServer extends DBusClient {
       this.distroId = '',
       this.filters = 0,
       this.groups = 0,
+      this.locked = false,
       this.mimeTypes = const [],
       this.networkState = 0,
       this.roles = 0,
@@ -122,6 +125,22 @@ void main() {
     await client.connect();
 
     expect(client.distroId, equals('ubuntu;21.04;x86_64'));
+
+    await client.close();
+  });
+
+  test('locked', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var packagekit = MockPackageKitServer(clientAddress, locked: true);
+    await packagekit.start();
+
+    var client = PackageKitClient(bus: DBusClient(clientAddress));
+    await client.connect();
+
+    expect(client.locked, isTrue);
 
     await client.close();
   });
