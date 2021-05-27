@@ -17,6 +17,7 @@ class MockPackageKitRoot extends DBusObject {
       'BackendDescription': DBusString(server.backendDescription),
       'BackendName': DBusString(server.backendName),
       'DistroId': DBusString(server.distroId),
+      'Filters': DBusUint64(server.filters),
       'MimeTypes': DBusArray.string(server.mimeTypes),
       'NetworkState': DBusUint32(server.networkState),
       'VersionMajor': DBusUint32(server.versionMajor),
@@ -34,6 +35,7 @@ class MockPackageKitServer extends DBusClient {
   final String backendDescription;
   final String backendName;
   final String distroId;
+  final int filters;
   final List<String> mimeTypes;
   final int networkState;
   final int versionMajor;
@@ -45,6 +47,7 @@ class MockPackageKitServer extends DBusClient {
       this.backendDescription = '',
       this.backendName = '',
       this.distroId = '',
+      this.filters = 0,
       this.mimeTypes = const [],
       this.networkState = 0,
       this.versionMajor = 0,
@@ -113,6 +116,33 @@ void main() {
     await client.connect();
 
     expect(client.distroId, equals('ubuntu;21.04;x86_64'));
+
+    await client.close();
+  });
+
+  test('filters', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var packagekit = MockPackageKitServer(clientAddress, filters: 0x5041154);
+    await packagekit.start();
+
+    var client = PackageKitClient(bus: DBusClient(clientAddress));
+    await client.connect();
+
+    expect(
+        client.filters,
+        equals({
+          PackageKitFilter.installed,
+          PackageKitFilter.development,
+          PackageKitFilter.gui,
+          PackageKitFilter.free,
+          PackageKitFilter.supported,
+          PackageKitFilter.arch,
+          PackageKitFilter.application,
+          PackageKitFilter.downloaded
+        }));
 
     await client.close();
   });

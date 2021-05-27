@@ -5,6 +5,47 @@ import 'package:dbus/dbus.dart';
 /// D-Bus interface names.
 const _serverInterfaceName = 'org.freedesktop.PackageKit';
 
+enum PackageKitFilter {
+  unknown,
+  none,
+  installed,
+  notInstalled,
+  development,
+  notDevelopment,
+  gui,
+  notGui,
+  free,
+  notFree,
+  visible,
+  notVisible,
+  supported,
+  notSupported,
+  baseName,
+  notBaseName,
+  newest,
+  notNewest,
+  arch,
+  notArch,
+  source,
+  notSource,
+  collections,
+  notCollections,
+  application,
+  notApplication,
+  downloaded,
+  notDownloaded
+}
+
+Set<PackageKitFilter> _decodeFilters(int mask) {
+  var filters = <PackageKitFilter>{};
+  for (var value in PackageKitFilter.values) {
+    if ((mask & (1 << value.index)) != 0) {
+      filters.add(value);
+    }
+  }
+  return filters;
+}
+
 enum PackageKitNetworkState { unknown, offline, online, wired, wifi, mobile }
 
 /// A client that connects to PackageKit.
@@ -25,6 +66,8 @@ class PackageKitClient {
       (_properties['BackendDescription'] as DBusString).value;
   String get backendName => (_properties['BackendName'] as DBusString).value;
   String get distroId => (_properties['DistroId'] as DBusString).value;
+  Set<PackageKitFilter> get filters =>
+      _decodeFilters((_properties['Filters'] as DBusUint64).value);
   List<String> get mimeTypes => (_properties['MimeTypes'] as DBusArray)
       .children
       .map((value) => (value as DBusString).value)
