@@ -16,6 +16,7 @@ class MockPackageKitRoot extends DBusObject {
       'BackendAuthor': DBusString(server.backendAuthor),
       'BackendDescription': DBusString(server.backendDescription),
       'BackendName': DBusString(server.backendName),
+      'DistroId': DBusString(server.distroId),
       'MimeTypes': DBusArray.string(server.mimeTypes),
       'VersionMajor': DBusUint32(server.versionMajor),
       'VersionMicro': DBusUint32(server.versionMicro),
@@ -31,6 +32,7 @@ class MockPackageKitServer extends DBusClient {
   final String backendAuthor;
   final String backendDescription;
   final String backendName;
+  final String distroId;
   final List<String> mimeTypes;
   final int versionMajor;
   final int versionMicro;
@@ -40,6 +42,7 @@ class MockPackageKitServer extends DBusClient {
       {this.backendAuthor = '',
       this.backendDescription = '',
       this.backendName = '',
+      this.distroId = '',
       this.mimeTypes = const [],
       this.versionMajor = 0,
       this.versionMicro = 0,
@@ -90,6 +93,23 @@ void main() {
     expect(client.backendName, equals('aptcc'));
     expect(client.backendDescription, equals('APTcc'));
     expect(client.backendAuthor, equals('"Testy Tester" <test@example.com>'));
+
+    await client.close();
+  });
+
+  test('distro id', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var packagekit =
+        MockPackageKitServer(clientAddress, distroId: 'ubuntu;21.04;x86_64');
+    await packagekit.start();
+
+    var client = PackageKitClient(bus: DBusClient(clientAddress));
+    await client.connect();
+
+    expect(client.distroId, equals('ubuntu;21.04;x86_64'));
 
     await client.close();
   });

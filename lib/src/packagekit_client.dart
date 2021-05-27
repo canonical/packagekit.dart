@@ -22,6 +22,7 @@ class PackageKitClient {
   String get backendDescription =>
       (_properties['BackendDescription'] as DBusString).value;
   String get backendName => (_properties['BackendName'] as DBusString).value;
+  String get distroId => (_properties['DistroId'] as DBusString).value;
   List<String> get mimeTypes => (_properties['MimeTypes'] as DBusArray)
       .children
       .map((value) => (value as DBusString).value)
