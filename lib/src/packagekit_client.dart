@@ -5,6 +5,8 @@ import 'package:dbus/dbus.dart';
 /// D-Bus interface names.
 const _serverInterfaceName = 'org.freedesktop.PackageKit';
 
+enum PackageKitNetworkState { unknown, offline, online, wired, wifi, mobile }
+
 /// A client that connects to PackageKit.
 class PackageKitClient {
   /// The bus this client is connected to.
@@ -27,6 +29,8 @@ class PackageKitClient {
       .children
       .map((value) => (value as DBusString).value)
       .toList();
+  PackageKitNetworkState get networkState => PackageKitNetworkState
+      .values[(_properties['NetworkState'] as DBusUint32).value];
   int get versionMajor => (_properties['VersionMajor'] as DBusUint32).value;
   int get versionMinor => (_properties['VersionMinor'] as DBusUint32).value;
   int get versionMicro => (_properties['VersionMicro'] as DBusUint32).value;

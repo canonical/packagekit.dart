@@ -18,6 +18,7 @@ class MockPackageKitRoot extends DBusObject {
       'BackendName': DBusString(server.backendName),
       'DistroId': DBusString(server.distroId),
       'MimeTypes': DBusArray.string(server.mimeTypes),
+      'NetworkState': DBusUint32(server.networkState),
       'VersionMajor': DBusUint32(server.versionMajor),
       'VersionMicro': DBusUint32(server.versionMicro),
       'VersionMinor': DBusUint32(server.versionMinor)
@@ -34,6 +35,7 @@ class MockPackageKitServer extends DBusClient {
   final String backendName;
   final String distroId;
   final List<String> mimeTypes;
+  final int networkState;
   final int versionMajor;
   final int versionMicro;
   final int versionMinor;
@@ -44,6 +46,7 @@ class MockPackageKitServer extends DBusClient {
       this.backendName = '',
       this.distroId = '',
       this.mimeTypes = const [],
+      this.networkState = 0,
       this.versionMajor = 0,
       this.versionMicro = 0,
       this.versionMinor = 0})
@@ -130,6 +133,22 @@ void main() {
 
     expect(client.mimeTypes,
         equals(['application/vnd.debian.binary-package', 'application/x-deb']));
+
+    await client.close();
+  });
+
+  test('network state', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var packagekit = MockPackageKitServer(clientAddress, networkState: 2);
+    await packagekit.start();
+
+    var client = PackageKitClient(bus: DBusClient(clientAddress));
+    await client.connect();
+
+    expect(client.networkState, equals(PackageKitNetworkState.online));
 
     await client.close();
   });
