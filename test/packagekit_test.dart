@@ -13,6 +13,7 @@ class MockPackageKitRoot extends DBusObject {
   @override
   Future<DBusMethodResponse> getAllProperties(String interface) async {
     var properties = <String, DBusValue>{
+      'BackendAuthor': DBusString(server.backendAuthor),
       'BackendDescription': DBusString(server.backendDescription),
       'BackendName': DBusString(server.backendName),
       'MimeTypes': DBusArray.string(server.mimeTypes),
@@ -27,6 +28,7 @@ class MockPackageKitRoot extends DBusObject {
 class MockPackageKitServer extends DBusClient {
   late final MockPackageKitRoot _root;
 
+  final String backendAuthor;
   final String backendDescription;
   final String backendName;
   final List<String> mimeTypes;
@@ -35,7 +37,8 @@ class MockPackageKitServer extends DBusClient {
   final int versionMinor;
 
   MockPackageKitServer(DBusAddress clientAddress,
-      {this.backendDescription = '',
+      {this.backendAuthor = '',
+      this.backendDescription = '',
       this.backendName = '',
       this.mimeTypes = const [],
       this.versionMajor = 0,
@@ -76,7 +79,9 @@ void main() {
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
     var packagekit = MockPackageKitServer(clientAddress,
-        backendName: 'aptcc', backendDescription: 'APTcc');
+        backendName: 'aptcc',
+        backendDescription: 'APTcc',
+        backendAuthor: '"Testy Tester" <test@example.com>');
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
@@ -84,6 +89,7 @@ void main() {
 
     expect(client.backendName, equals('aptcc'));
     expect(client.backendDescription, equals('APTcc'));
+    expect(client.backendAuthor, equals('"Testy Tester" <test@example.com>'));
 
     await client.close();
   });

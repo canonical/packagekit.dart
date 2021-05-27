@@ -17,6 +17,8 @@ class PackageKitClient {
   /// Properties on the root object.
   final _properties = <String, DBusValue>{};
 
+  String get backendAuthor =>
+      (_properties['BackendAuthor'] as DBusString).value;
   String get backendDescription =>
       (_properties['BackendDescription'] as DBusString).value;
   String get backendName => (_properties['BackendName'] as DBusString).value;
