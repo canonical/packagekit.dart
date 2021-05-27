@@ -158,6 +158,26 @@ class MockPackageKitTransaction extends DBusObject {
         }
         emitFinished(ExitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
+      case 'SearchNames':
+        var values = (methodCall.values[1] as DBusArray)
+            .children
+            .map((value) => (value as DBusString).value);
+        bool nameMatches(String name) {
+          for (var value in values) {
+            if (!name.contains(value)) {
+              return false;
+            }
+          }
+          return true;
+        }
+        for (var p in server.installedPackages) {
+          if (nameMatches(p.name)) {
+            emitPackage(InfoInstalled,
+                '${p.name};${p.version};${p.arch};installed', p.summary);
+          }
+        }
+        emitFinished(ExitSuccess, server.transactionRuntime);
+        return DBusMethodSuccessResponse();
       case 'UpdatePackages':
         var packageIds = (methodCall.values[1] as DBusArray)
             .children
@@ -688,6 +708,77 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
         ]));
     await transaction.resolve(['hello']);
+
+    await client.close();
+  });
+
+  test('search names', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var packagekit = MockPackageKitServer(clientAddress,
+        transactionRuntime: 1234,
+        installedPackages: [
+          MockPackage('one', '1.1', arch: 'arm64', summary: '1'),
+          MockPackage('two', '1.2', arch: 'arm64', summary: '2'),
+          MockPackage('three', '1.3', arch: 'arm64', summary: '3')
+        ]);
+    await packagekit.start();
+
+    var client = PackageKitClient(bus: DBusClient(clientAddress));
+    await client.connect();
+
+    var transaction = await client.createTransaction();
+    expect(
+        transaction.events,
+        emitsInOrder([
+          PackageKitPackageEvent(
+              info: PackageKitInfo.installed,
+              packageId:
+                  PackageKitPackageId.fromString('one;1.1;arm64;installed'),
+              summary: '1'),
+          PackageKitPackageEvent(
+              info: PackageKitInfo.installed,
+              packageId:
+                  PackageKitPackageId.fromString('two;1.2;arm64;installed'),
+              summary: '2'),
+          PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
+        ]));
+    await transaction.searchNames(['o']);
+
+    await client.close();
+  });
+
+  test('search names - multiple terms', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var packagekit = MockPackageKitServer(clientAddress,
+        transactionRuntime: 1234,
+        installedPackages: [
+          MockPackage('one', '1.1', arch: 'arm64', summary: '1'),
+          MockPackage('two', '1.2', arch: 'arm64', summary: '2'),
+          MockPackage('three', '1.3', arch: 'arm64', summary: '3')
+        ]);
+    await packagekit.start();
+
+    var client = PackageKitClient(bus: DBusClient(clientAddress));
+    await client.connect();
+
+    var transaction = await client.createTransaction();
+    expect(
+        transaction.events,
+        emitsInOrder([
+          PackageKitPackageEvent(
+              info: PackageKitInfo.installed,
+              packageId:
+                  PackageKitPackageId.fromString('two;1.2;arm64;installed'),
+              summary: '2'),
+          PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
+        ]));
+    await transaction.searchNames(['t', 'o']);
 
     await client.close();
   });

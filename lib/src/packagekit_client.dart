@@ -653,6 +653,13 @@ class PackageKitTransaction {
         replySignature: DBusSignature(''));
   }
 
+  Future<void> searchNames(Iterable<String> values,
+      {Set<PackageKitFilter> filter = const {}}) async {
+    await _object.callMethod(_packageKitTransactionInterfaceName, 'SearchNames',
+        [DBusUint64(_encodeFilters(filter)), DBusArray.string(values)],
+        replySignature: DBusSignature(''));
+  }
+
   Future<void> updatePackages(Iterable<PackageKitPackageId> packageIds,
       {Set<PackageKitTransactionFlag> transactionFlags = const {}}) async {
     await _object.callMethod(
