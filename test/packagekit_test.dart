@@ -20,6 +20,8 @@ const int InfoFinished = 18;
 const int InfoPreparing = 21;
 const int InfoDecompressing = 22;
 
+const int RestartSystem = 4;
+
 const int StatusSetup = 2;
 const int StatusRemove = 6;
 const int StatusDownload = 8;
@@ -194,6 +196,14 @@ class MockPackageKitTransaction extends DBusObject {
         }
         emitFinished(ExitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
+      case 'UpgradeSystem':
+        var id = 'linux;2.0;arm64;installed';
+        var summary = 'Linux kernel';
+        emitPackage(InfoUpdating, id, summary);
+        emitPackage(InfoFinished, id, summary);
+        emitRequireRestart(RestartSystem, id);
+        emitFinished(ExitSuccess, server.transactionRuntime);
+        return DBusMethodSuccessResponse();
       default:
         return DBusMethodErrorResponse.unknownMethod();
     }
@@ -227,6 +237,11 @@ class MockPackageKitTransaction extends DBusObject {
   void emitRepoDetail(String id, String description, bool enabled) {
     emitSignal('org.freedesktop.PackageKit.Transaction', 'RepoDetail',
         [DBusString(id), DBusString(description), DBusBoolean(enabled)]);
+  }
+
+  void emitRequireRestart(int type, String packageId) {
+    emitSignal('org.freedesktop.PackageKit.Transaction', 'RequireRestart',
+        [DBusUint32(type), DBusString(packageId)]);
   }
 }
 
@@ -1113,6 +1128,43 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
         ]));
     await transaction.updatePackages([packageId]);
+
+    await client.close();
+  });
+
+  test('upgrade system', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var packagekit = MockPackageKitServer(
+      clientAddress,
+      transactionRuntime: 1234,
+    );
+    await packagekit.start();
+
+    var client = PackageKitClient(bus: DBusClient(clientAddress));
+    await client.connect();
+
+    var transaction = await client.createTransaction();
+    var packageId = PackageKitPackageId.fromString('linux;2.0;arm64;installed');
+    var summary = 'Linux kernel';
+    expect(
+        transaction.events,
+        emitsInOrder([
+          PackageKitPackageEvent(
+              info: PackageKitInfo.updating,
+              packageId: packageId,
+              summary: summary),
+          PackageKitPackageEvent(
+              info: PackageKitInfo.finished,
+              packageId: packageId,
+              summary: summary),
+          PackageKitRequireRestartEvent(
+              type: PackageKitRestart.system, packageId: packageId),
+          PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
+        ]));
+    await transaction.upgradeSystem('impish', PackageKitDistroUpgrade.stable);
 
     await client.close();
   });

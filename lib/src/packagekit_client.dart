@@ -8,6 +8,8 @@ const _packageKitInterfaceName = 'org.freedesktop.PackageKit';
 const _packageKitTransactionInterfaceName =
     'org.freedesktop.PackageKit.Transaction';
 
+enum PackageKitDistroUpgrade { unknown, stable, unstable }
+
 enum PackageKitError {
   unknown,
   outOfMemory,
@@ -270,6 +272,16 @@ Set<PackageKitRole> _decodeRoles(int mask) {
   return roles;
 }
 
+enum PackageKitRestart {
+  unknown,
+  none,
+  application,
+  session,
+  system,
+  securitySession,
+  securitySystem
+}
+
 enum PackageKitStatus {
   unknown,
   wait,
@@ -495,6 +507,23 @@ class PackageKitRepositoryDetailEvent extends PackageKitEvent {
       "$runtimeType(repoId: '$repoId', description: '$description', enabled: $enabled)";
 }
 
+class PackageKitRequireRestartEvent extends PackageKitEvent {
+  final PackageKitRestart type;
+  final PackageKitPackageId packageId;
+
+  const PackageKitRequireRestartEvent(
+      {required this.type, required this.packageId});
+
+  @override
+  bool operator ==(other) =>
+      other is PackageKitRequireRestartEvent &&
+      other.type == type &&
+      other.packageId == packageId;
+
+  @override
+  String toString() => "$runtimeType(type: $type, packageId: '$packageId')";
+}
+
 /// A PackageKit transaction.
 class PackageKitTransaction {
   /// Remote transaction object.
@@ -570,6 +599,15 @@ class PackageKitTransaction {
               repoId: (signal.values[0] as DBusString).value,
               description: (signal.values[1] as DBusString).value,
               enabled: (signal.values[2] as DBusBoolean).value);
+        case 'RequireRestart':
+          if (signal.signature != DBusSignature('us')) {
+            throw 'Invalid ${signal.name} signal';
+          }
+          return PackageKitRequireRestartEvent(
+              type: PackageKitRestart
+                  .values[(signal.values[0] as DBusUint32).value],
+              packageId: PackageKitPackageId.fromString(
+                  (signal.values[1] as DBusString).value));
         default:
           return PackageKitUnknownEvent(signal.name, signal.values);
       }
@@ -673,6 +711,20 @@ class PackageKitTransaction {
         [
           DBusUint64(_encodeTransactionFlags(transactionFlags)),
           DBusArray.string(packageIds.map((id) => id.toString()))
+        ],
+        replySignature: DBusSignature(''));
+  }
+
+  Future<void> upgradeSystem(
+      String distroId, PackageKitDistroUpgrade upgradeKind,
+      {Set<PackageKitTransactionFlag> transactionFlags = const {}}) async {
+    await _object.callMethod(
+        _packageKitTransactionInterfaceName,
+        'UpgradeSystem',
+        [
+          DBusUint64(_encodeTransactionFlags(transactionFlags)),
+          DBusString(distroId),
+          DBusUint32(upgradeKind.index)
         ],
         replySignature: DBusSignature(''));
   }
