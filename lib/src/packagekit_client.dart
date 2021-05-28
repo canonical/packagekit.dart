@@ -510,6 +510,11 @@ class PackageKitTransaction {
             path: objectPath)
         .map((signal) {
       switch (signal.name) {
+        case 'Destroy':
+          if (signal.signature != DBusSignature('')) {
+            throw 'Invalid ${signal.name} signal';
+          }
+          return PackageKitDestroyEvent();
         case 'ErrorCode':
           if (signal.signature != DBusSignature('us')) {
             throw 'Invalid ${signal.name} signal';
