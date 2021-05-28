@@ -43,6 +43,34 @@ class MockPackageKitTransaction extends DBusObject {
     }
 
     switch (methodCall.name) {
+      case 'DependsOn':
+        var packageIds = (methodCall.values[1] as DBusArray)
+            .children
+            .map((value) => (value as DBusString).value);
+        var recursive = (methodCall.values[2] as DBusBoolean).value;
+        void findDeps(MockPackage package) {
+          for (var childPackageName in package.dependsOn) {
+            var p = server.findInstalledByName(childPackageName);
+            if (p != null) {
+              emitPackage(InfoInstalled,
+                  '${p.name};${p.version};${p.arch};installed', p.summary);
+              if (recursive) {
+                findDeps(p);
+              }
+            }
+          }
+        }
+        for (var id in packageIds) {
+          var package = server.findInstalled(id);
+          if (package == null) {
+            emitErrorCode(ErrorPackageNotFound, 'Package not found');
+            emitFinished(ExitFailed, server.transactionRuntime);
+            return DBusMethodSuccessResponse();
+          }
+          findDeps(package);
+        }
+        emitFinished(ExitSuccess, server.transactionRuntime);
+        return DBusMethodSuccessResponse();
       case 'DownloadPackages':
         var packageIds = (methodCall.values[1] as DBusArray)
             .children
@@ -394,9 +422,13 @@ class MockPackage {
   final String arch;
   final String summary;
   final List<String> fileList;
+  final List<String> dependsOn;
 
   const MockPackage(this.name, this.version,
-      {this.arch = '', this.summary = '', this.fileList = const []});
+      {this.arch = '',
+      this.summary = '',
+      this.fileList = const [],
+      this.dependsOn = const []});
 }
 
 class MockPackageKitServer extends DBusClient {
@@ -453,6 +485,15 @@ class MockPackageKitServer extends DBusClient {
       if (package.name == id.name &&
           package.version == id.version &&
           package.arch == id.arch) {
+        return package;
+      }
+    }
+    return null;
+  }
+
+  MockPackage? findInstalledByName(String name) {
+    for (var package in installedPackages) {
+      if (package.name == name) {
         return package;
       }
     }
@@ -978,6 +1019,92 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
         ]));
     await transaction.downloadPackages([packageId]);
+
+    await client.close();
+  });
+
+  test('depends on', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var packagekit = MockPackageKitServer(clientAddress,
+        transactionRuntime: 1234,
+        installedPackages: [
+          MockPackage('parent', '1', dependsOn: ['child1', 'child2']),
+          MockPackage('child1', '1.1'),
+          MockPackage('child2', '1.2', dependsOn: ['grandchild']),
+          MockPackage('grandchild', '1.2.1')
+        ]);
+    await packagekit.start();
+
+    var client = PackageKitClient(bus: DBusClient(clientAddress));
+    await client.connect();
+
+    var transaction = await client.createTransaction();
+    expect(
+        transaction.events,
+        emitsInOrder([
+          PackageKitPackageEvent(
+              info: PackageKitInfo.installed,
+              packageId:
+                  PackageKitPackageId.fromString('child1;1.1;;installed'),
+              summary: ''),
+          PackageKitPackageEvent(
+              info: PackageKitInfo.installed,
+              packageId:
+                  PackageKitPackageId.fromString('child2;1.2;;installed'),
+              summary: ''),
+          PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
+        ]));
+    await transaction
+        .dependsOn([PackageKitPackageId.fromString('parent;1;;installed')]);
+
+    await client.close();
+  });
+
+  test('depends on - recursive', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var packagekit = MockPackageKitServer(clientAddress,
+        transactionRuntime: 1234,
+        installedPackages: [
+          MockPackage('parent', '1', dependsOn: ['child1', 'child2']),
+          MockPackage('child1', '1.1'),
+          MockPackage('child2', '1.2', dependsOn: ['grandchild']),
+          MockPackage('grandchild', '1.2.1')
+        ]);
+    await packagekit.start();
+
+    var client = PackageKitClient(bus: DBusClient(clientAddress));
+    await client.connect();
+
+    var transaction = await client.createTransaction();
+    expect(
+        transaction.events,
+        emitsInOrder([
+          PackageKitPackageEvent(
+              info: PackageKitInfo.installed,
+              packageId:
+                  PackageKitPackageId.fromString('child1;1.1;;installed'),
+              summary: ''),
+          PackageKitPackageEvent(
+              info: PackageKitInfo.installed,
+              packageId:
+                  PackageKitPackageId.fromString('child2;1.2;;installed'),
+              summary: ''),
+          PackageKitPackageEvent(
+              info: PackageKitInfo.installed,
+              packageId:
+                  PackageKitPackageId.fromString('grandchild;1.2.1;;installed'),
+              summary: ''),
+          PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
+        ]));
+    await transaction.dependsOn(
+        [PackageKitPackageId.fromString('parent;1;;installed')],
+        recursive: true);
 
     await client.close();
   });
