@@ -61,6 +61,21 @@ class MockPackageKitTransaction extends DBusObject {
         }
         emitFinished(ExitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
+      case 'GetFiles':
+        var packageIds = (methodCall.values[0] as DBusArray)
+            .children
+            .map((value) => (value as DBusString).value);
+        for (var id in packageIds) {
+          var package = server.findInstalled(id);
+          if (package == null) {
+            emitErrorCode(ErrorPackageNotFound, 'Package not found');
+            emitFinished(ExitFailed, server.transactionRuntime);
+            return DBusMethodSuccessResponse();
+          }
+          emitFiles(id, package.fileList);
+        }
+        emitFinished(ExitSuccess, server.transactionRuntime);
+        return DBusMethodSuccessResponse();
       case 'GetPackages':
         var filter = (methodCall.values[0] as DBusUint64).value;
         for (var p in server.installedPackages) {
@@ -318,9 +333,10 @@ class MockPackage {
   final String version;
   final String arch;
   final String summary;
+  final List<String> fileList;
 
   const MockPackage(this.name, this.version,
-      {this.arch = '', this.summary = ''});
+      {this.arch = '', this.summary = '', this.fileList = const []});
 }
 
 class MockPackageKitServer extends DBusClient {
@@ -991,6 +1007,39 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
         ]));
     await transaction.removePackages([packageId]);
+
+    await client.close();
+  });
+
+  test('get files', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var packagekit = MockPackageKitServer(clientAddress,
+        transactionRuntime: 1234,
+        installedPackages: [
+          MockPackage('hello', '2.10',
+              arch: 'arm64',
+              fileList: ['/usr/bin/hello', '/usr/share/man/man1/hello.1.gz'])
+        ]);
+    await packagekit.start();
+
+    var client = PackageKitClient(bus: DBusClient(clientAddress));
+    await client.connect();
+
+    var transaction = await client.createTransaction();
+    var packageId =
+        PackageKitPackageId.fromString('hello;2.10;arm64;installed');
+    expect(
+        transaction.events,
+        emitsInOrder([
+          PackageKitFilesEvent(
+              packageId: packageId,
+              fileList: ['/usr/bin/hello', '/usr/share/man/man1/hello.1.gz']),
+          PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
+        ]));
+    await transaction.getFiles([packageId]);
 
     await client.close();
   });
