@@ -735,6 +735,13 @@ class PackageKitTransaction {
         replySignature: DBusSignature(''));
   }
 
+  Future<void> searchFiles(Iterable<String> values,
+      {Set<PackageKitFilter> filter = const {}}) async {
+    await _object.callMethod(_packageKitTransactionInterfaceName, 'SearchFiles',
+        [DBusUint64(_encodeFilters(filter)), DBusArray.string(values)],
+        replySignature: DBusSignature(''));
+  }
+
   Future<void> searchNames(Iterable<String> values,
       {Set<PackageKitFilter> filter = const {}}) async {
     await _object.callMethod(_packageKitTransactionInterfaceName, 'SearchNames',
