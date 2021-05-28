@@ -223,6 +223,8 @@ enum PackageKitInfo {
   unavailable
 }
 
+enum PackageKitMediaType { unknown, cd, dvd, disc }
+
 enum PackageKitNetworkState { unknown, offline, online, wired, wifi, mobile }
 
 enum PackageKitRole {
@@ -467,6 +469,28 @@ class PackageKitItemProgressEvent extends PackageKitEvent {
       "PackageKitItemProgressEvent(packageId: '$packageId', status: $status, percentage: $percentage)";
 }
 
+class PackageKitMediaChangeRequiredEvent extends PackageKitEvent {
+  final PackageKitMediaType mediaType;
+  final String mediaId;
+  final String mediaText;
+
+  const PackageKitMediaChangeRequiredEvent(
+      {required this.mediaType,
+      required this.mediaId,
+      required this.mediaText});
+
+  @override
+  bool operator ==(other) =>
+      other is PackageKitMediaChangeRequiredEvent &&
+      other.mediaType == mediaType &&
+      other.mediaId == mediaId &&
+      other.mediaText == mediaText;
+
+  @override
+  String toString() =>
+      "PackageKitMediaChangeRequiredEvent(mediaType: $mediaType, mediaId: '$mediaId', mediaText: '$mediaText')";
+}
+
 class PackageKitPackageEvent extends PackageKitEvent {
   final PackageKitInfo info;
   final PackageKitPackageId packageId;
@@ -581,6 +605,15 @@ class PackageKitTransaction {
               status: PackageKitStatus
                   .values[(signal.values[1] as DBusUint32).value],
               percentage: (signal.values[2] as DBusUint32).value);
+        case 'MediaChangeRequired':
+          if (signal.signature != DBusSignature('uss')) {
+            throw 'Invalid ${signal.name} signal';
+          }
+          return PackageKitMediaChangeRequiredEvent(
+              mediaType: PackageKitMediaType
+                  .values[(signal.values[0] as DBusUint32).value],
+              mediaId: (signal.values[1] as DBusString).value,
+              mediaText: (signal.values[2] as DBusString).value);
         case 'Package':
           if (signal.signature != DBusSignature('uss')) {
             throw 'Invalid ${signal.name} signal';
