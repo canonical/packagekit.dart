@@ -742,6 +742,12 @@ class PackageKitTransaction {
         replySignature: DBusSignature(''));
   }
 
+  Future<void> _setHints(Iterable<String> hints) async {
+    await _object.callMethod(_packageKitTransactionInterfaceName, 'SetHints',
+        [DBusArray.string(hints)],
+        replySignature: DBusSignature(''));
+  }
+
   Future<void> updatePackages(Iterable<PackageKitPackageId> packageIds,
       {Set<PackageKitTransactionFlag> transactionFlags = const {}}) async {
     await _object.callMethod(
@@ -780,6 +786,12 @@ class PackageKitClient {
 
   /// Properties on the root object.
   final _properties = <String, DBusValue>{};
+
+  String? locale;
+  bool background = false;
+  bool interactive = true;
+  bool idle = true;
+  int cacheAge = 0xffffffff;
 
   String get backendAuthor =>
       (_properties['BackendAuthor'] as DBusString).value;
@@ -821,8 +833,20 @@ class PackageKitClient {
     var result = await _root.callMethod(
         _packageKitInterfaceName, 'CreateTransaction', [],
         replySignature: DBusSignature('o'));
-    return PackageKitTransaction(
-        _bus, result.returnValues[0] as DBusObjectPath);
+    var transaction =
+        PackageKitTransaction(_bus, result.returnValues[0] as DBusObjectPath);
+
+    var hints = <String>[];
+    if (locale != null) {
+      hints.add('locale=$locale');
+    }
+    hints.add('background=${background ? 'true' : 'false'}');
+    hints.add('interactive=${interactive ? 'true' : 'false'}');
+    hints.add('idle=${idle ? 'true' : 'false'}');
+    hints.add('cache-age=$cacheAge');
+    await transaction._setHints(hints);
+
+    return transaction;
   }
 
   /// Terminates the connection to the PackageKit daemon. If a client remains unclosed, the Dart process may not terminate.
