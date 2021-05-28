@@ -652,6 +652,19 @@ class PackageKitTransaction {
         replySignature: DBusSignature(''));
   }
 
+  Future<void> dependsOn(Iterable<PackageKitPackageId> packageIds,
+      {Set<PackageKitFilter> filter = const {}, bool recursive = false}) async {
+    await _object.callMethod(
+        _packageKitTransactionInterfaceName,
+        'DependsOn',
+        [
+          DBusUint64(_encodeFilters(filter)),
+          DBusArray.string(packageIds.map((id) => id.toString())),
+          DBusBoolean(recursive)
+        ],
+        replySignature: DBusSignature(''));
+  }
+
   Future<void> downloadPackages(Iterable<PackageKitPackageId> packageIds,
       {bool storeInCache = false}) async {
     await _object.callMethod(
