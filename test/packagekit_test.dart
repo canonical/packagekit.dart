@@ -177,6 +177,30 @@ class MockPackageKitTransaction extends DBusObject {
         }
         emitFinished(ExitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
+      case 'SearchFiles':
+        var values = (methodCall.values[1] as DBusArray)
+            .children
+            .map((value) => (value as DBusString).value);
+        bool fileMatches(String path) {
+          for (var value in values) {
+            if (value.startsWith('/')) {
+              return path == value;
+            } else {
+              return path.split('/').last == value;
+            }
+          }
+          return false;
+        }
+        for (var p in server.installedPackages) {
+          for (var path in p.fileList) {
+            if (fileMatches(path)) {
+              emitPackage(InfoInstalled,
+                  '${p.name};${p.version};${p.arch};installed', p.summary);
+            }
+          }
+        }
+        emitFinished(ExitSuccess, server.transactionRuntime);
+        return DBusMethodSuccessResponse();
       case 'SearchNames':
         var values = (methodCall.values[1] as DBusArray)
             .children
@@ -231,6 +255,7 @@ class MockPackageKitTransaction extends DBusObject {
               break;
           }
         }
+        emitFinished(ExitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'UpdatePackages':
         var packageIds = (methodCall.values[1] as DBusArray)
@@ -887,6 +912,38 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
         ]));
     await transaction.searchNames(['t', 'o']);
+
+    await client.close();
+  });
+
+  test('search files', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var packagekit = MockPackageKitServer(clientAddress,
+        transactionRuntime: 1234,
+        installedPackages: [
+          MockPackage('one', '1.1', fileList: ['/usr/share/data/one.png']),
+          MockPackage('two', '1.2', fileList: ['/usr/share/data/two.png']),
+          MockPackage('three', '1.3', fileList: ['/usr/share/data/three.png'])
+        ]);
+    await packagekit.start();
+
+    var client = PackageKitClient(bus: DBusClient(clientAddress));
+    await client.connect();
+
+    var transaction = await client.createTransaction();
+    expect(
+        transaction.events,
+        emitsInOrder([
+          PackageKitPackageEvent(
+              info: PackageKitInfo.installed,
+              packageId: PackageKitPackageId.fromString('two;1.2;;installed'),
+              summary: ''),
+          PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
+        ]));
+    await transaction.searchFiles(['two.png']);
 
     await client.close();
   });
