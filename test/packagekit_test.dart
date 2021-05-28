@@ -20,6 +20,8 @@ const int InfoFinished = 18;
 const int InfoPreparing = 21;
 const int InfoDecompressing = 22;
 
+const int MediaTypeDvd = 2;
+
 const int RestartSystem = 4;
 
 const int StatusSetup = 2;
@@ -199,6 +201,8 @@ class MockPackageKitTransaction extends DBusObject {
       case 'UpgradeSystem':
         var id = 'linux;2.0;arm64;installed';
         var summary = 'Linux kernel';
+        emitMediaChangeRequired(
+            MediaTypeDvd, 'ubuntu-21-10.iso', 'Ubuntu 21.10 DVD');
         emitPackage(InfoUpdating, id, summary);
         emitPackage(InfoFinished, id, summary);
         emitRequireRestart(RestartSystem, id);
@@ -227,6 +231,12 @@ class MockPackageKitTransaction extends DBusObject {
   void emitItemProgress(String packageId, int status, int percentage) {
     emitSignal('org.freedesktop.PackageKit.Transaction', 'ItemProgress',
         [DBusString(packageId), DBusUint32(status), DBusUint32(percentage)]);
+  }
+
+  void emitMediaChangeRequired(
+      int mediaType, String mediaId, String mediaText) {
+    emitSignal('org.freedesktop.PackageKit.Transaction', 'MediaChangeRequired',
+        [DBusUint32(mediaType), DBusString(mediaId), DBusString(mediaText)]);
   }
 
   void emitPackage(int info, String packageId, String summary) {
@@ -1152,6 +1162,10 @@ void main() {
     expect(
         transaction.events,
         emitsInOrder([
+          PackageKitMediaChangeRequiredEvent(
+              mediaType: PackageKitMediaType.dvd,
+              mediaId: 'ubuntu-21-10.iso',
+              mediaText: 'Ubuntu 21.10 DVD'),
           PackageKitPackageEvent(
               info: PackageKitInfo.updating,
               packageId: packageId,
