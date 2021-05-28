@@ -664,6 +664,12 @@ class PackageKitTransaction {
         replySignature: DBusSignature(''));
   }
 
+  Future<void> getFiles(Iterable<PackageKitPackageId> packageIds) async {
+    await _object.callMethod(_packageKitTransactionInterfaceName, 'GetFiles',
+        [DBusArray.string(packageIds.map((id) => id.toString()))],
+        replySignature: DBusSignature(''));
+  }
+
   Future<void> getPackages({Set<PackageKitFilter> filter = const {}}) async {
     await _object.callMethod(_packageKitTransactionInterfaceName, 'GetPackages',
         [DBusUint64(_encodeFilters(filter))],
