@@ -197,6 +197,41 @@ class MockPackageKitTransaction extends DBusObject {
         }
         emitFinished(ExitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
+      case 'SetHints':
+        server.lastLocale = null;
+        server.lastBackground = null;
+        server.lastInteractive = null;
+        server.lastIdle = null;
+        server.lastCacheAge = null;
+        var hints = (methodCall.values[0] as DBusArray)
+            .children
+            .map((value) => (value as DBusString).value);
+        for (var hint in hints) {
+          var i = hint.indexOf('=');
+          if (i < 0) {
+            continue;
+          }
+          var name = hint.substring(0, i);
+          var value = hint.substring(i + 1);
+          switch (name) {
+            case 'locale':
+              server.lastLocale = value;
+              break;
+            case 'background':
+              server.lastBackground = value == 'true';
+              break;
+            case 'interactive':
+              server.lastInteractive = value == 'true';
+              break;
+            case 'idle':
+              server.lastIdle = value == 'true';
+              break;
+            case 'cache-age':
+              server.lastCacheAge = int.parse(value);
+              break;
+          }
+        }
+        return DBusMethodSuccessResponse();
       case 'UpdatePackages':
         var packageIds = (methodCall.values[1] as DBusArray)
             .children
@@ -360,6 +395,12 @@ class MockPackageKitServer extends DBusClient {
   final List<MockRepository> repositories;
   final Map<String, List<MockPackage>> availablePackages;
   final List<MockPackage> installedPackages;
+
+  String? lastLocale;
+  bool? lastBackground;
+  bool? lastInteractive;
+  bool? lastIdle;
+  int? lastCacheAge;
 
   MockPackageKitServer(DBusAddress clientAddress,
       {this.backendAuthor = '',
@@ -636,6 +677,32 @@ void main() {
     await client.connect();
 
     expect(client.networkState, equals(PackageKitNetworkState.online));
+
+    await client.close();
+  });
+
+  test('transaction hints', () async {
+    var server = DBusServer();
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var packagekit = MockPackageKitServer(clientAddress);
+    await packagekit.start();
+
+    var client = PackageKitClient(bus: DBusClient(clientAddress));
+    await client.connect();
+
+    client.locale = 'en_NZ.utf-8';
+    client.background = true;
+    client.interactive = true;
+    client.idle = true;
+    client.cacheAge = 42;
+    await client.createTransaction();
+    expect(packagekit.lastLocale, equals('en_NZ.utf-8'));
+    expect(packagekit.lastBackground, isTrue);
+    expect(packagekit.lastInteractive, isTrue);
+    expect(packagekit.lastIdle, isTrue);
+    expect(packagekit.lastCacheAge, equals(42));
 
     await client.close();
   });
