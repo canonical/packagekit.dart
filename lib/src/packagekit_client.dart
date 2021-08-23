@@ -556,7 +556,8 @@ class PackageKitTransaction {
   late final Stream<PackageKitEvent> events;
 
   PackageKitTransaction(DBusClient bus, DBusObjectPath objectPath)
-      : _object = DBusRemoteObject(bus, _packageKitBusName, objectPath) {
+      : _object =
+            DBusRemoteObject(bus, name: _packageKitBusName, path: objectPath) {
     events = DBusSignalStream(bus,
             sender: _packageKitBusName,
             interface: _packageKitTransactionInterfaceName,
@@ -840,8 +841,9 @@ class PackageKitClient {
   PackageKitClient({DBusClient? bus})
       : _bus = bus ?? DBusClient.system(),
         _closeBus = bus == null {
-    _root = DBusRemoteObject(_bus, _packageKitBusName,
-        DBusObjectPath('/org/freedesktop/PackageKit'));
+    _root = DBusRemoteObject(_bus,
+        name: _packageKitBusName,
+        path: DBusObjectPath('/org/freedesktop/PackageKit'));
   }
 
   /// Connects to the PackageKit daemon.
