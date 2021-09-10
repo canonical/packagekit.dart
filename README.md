@@ -1,4 +1,5 @@
 [![Pub Package](https://img.shields.io/pub/v/packagekit.svg)](https://pub.dev/packages/packagekit)
+[![codecov](https://codecov.io/gh/canonical/packagekit.dart/branch/main/graph/badge.svg?token=0VW5M7TZPL)](https://codecov.io/gh/canonical/packagekit.dart)
 
 Provides a client to connect to [PackageKit](https://www.freedesktop.org/software/PackageKit) - the service that enables installation and removal of software packages on
 Linux.
