@@ -526,25 +526,27 @@ class MockPackageKitServer extends DBusClient {
 void main() {
   test('daemon version', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
     var packagekit = MockPackageKitServer(clientAddress,
         versionMajor: 1, versionMinor: 2, versionMicro: 3);
+    addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     expect(client.versionMajor, equals(1));
     expect(client.versionMinor, equals(2));
     expect(client.versionMicro, equals(3));
-
-    await client.close();
   });
 
   test('backend', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
@@ -552,20 +554,21 @@ void main() {
         backendName: 'aptcc',
         backendDescription: 'APTcc',
         backendAuthor: '"Testy Tester" <test@example.com>');
+    addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     expect(client.backendName, equals('aptcc'));
     expect(client.backendDescription, equals('APTcc'));
     expect(client.backendAuthor, equals('"Testy Tester" <test@example.com>'));
-
-    await client.close();
   });
 
   test('distro id', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
@@ -574,38 +577,41 @@ void main() {
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     expect(client.distroId, equals('ubuntu;21.04;x86_64'));
-
-    await client.close();
   });
 
   test('locked', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
     var packagekit = MockPackageKitServer(clientAddress, locked: true);
+    addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     expect(client.locked, isTrue);
-
-    await client.close();
   });
 
   test('filters', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
     var packagekit = MockPackageKitServer(clientAddress, filters: 0x5041154);
+    addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     expect(
@@ -620,19 +626,20 @@ void main() {
           PackageKitFilter.application,
           PackageKitFilter.downloaded
         }));
-
-    await client.close();
   });
 
   test('groups', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
     var packagekit = MockPackageKitServer(clientAddress, groups: 0xe8d6fcfc);
+    addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     expect(
@@ -660,19 +667,20 @@ void main() {
           PackageKitGroup.documentation,
           PackageKitGroup.electronics
         }));
-
-    await client.close();
   });
 
   test('roles', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
     var packagekit = MockPackageKitServer(clientAddress, roles: 0x1f2fefffe);
+    addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     expect(
@@ -707,12 +715,11 @@ void main() {
           PackageKitRole.getFilesLocal,
           PackageKitRole.repoRemove
         }));
-
-    await client.close();
   });
 
   test('mime types', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
@@ -720,42 +727,46 @@ void main() {
       'application/vnd.debian.binary-package',
       'application/x-deb'
     ]);
+    addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     expect(client.mimeTypes,
         equals(['application/vnd.debian.binary-package', 'application/x-deb']));
-
-    await client.close();
   });
 
   test('network state', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
     var packagekit = MockPackageKitServer(clientAddress, networkState: 2);
+    addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     expect(client.networkState, equals(PackageKitNetworkState.online));
-
-    await client.close();
   });
 
   test('transaction hints', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
     var packagekit = MockPackageKitServer(clientAddress);
+    addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     client.locale = 'en_NZ.utf-8';
@@ -769,12 +780,11 @@ void main() {
     expect(packagekit.lastInteractive, isTrue);
     expect(packagekit.lastIdle, isTrue);
     expect(packagekit.lastCacheAge, equals(42));
-
-    await client.close();
   });
 
   test('get packages', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
@@ -790,9 +800,11 @@ void main() {
                 arch: 'arm64', summary: 'classic UNIX line editor')
           ]
         });
+    addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     var transaction = await client.createTransaction();
@@ -812,12 +824,11 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
         ]));
     await transaction.getPackages();
-
-    await client.close();
   });
 
   test('get packages - installed', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
@@ -833,9 +844,11 @@ void main() {
                 arch: 'arm64', summary: 'classic UNIX line editor')
           ]
         });
+    addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     var transaction = await client.createTransaction();
@@ -850,12 +863,11 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
         ]));
     await transaction.getPackages(filter: {PackageKitFilter.installed});
-
-    await client.close();
   });
 
   test('resolve', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
@@ -865,9 +877,11 @@ void main() {
           MockPackage('hello', '2.10',
               arch: 'arm64', summary: 'example package based on GNU hello')
         ]);
+    addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     var transaction = await client.createTransaction();
@@ -882,12 +896,11 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
         ]));
     await transaction.resolve(['hello']);
-
-    await client.close();
   });
 
   test('search names', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
@@ -898,9 +911,11 @@ void main() {
           MockPackage('two', '1.2', arch: 'arm64', summary: '2'),
           MockPackage('three', '1.3', arch: 'arm64', summary: '3')
         ]);
+    addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     var transaction = await client.createTransaction();
@@ -920,12 +935,11 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
         ]));
     await transaction.searchNames(['o']);
-
-    await client.close();
   });
 
   test('search names - multiple terms', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
@@ -936,9 +950,11 @@ void main() {
           MockPackage('two', '1.2', arch: 'arm64', summary: '2'),
           MockPackage('three', '1.3', arch: 'arm64', summary: '3')
         ]);
+    addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     var transaction = await client.createTransaction();
@@ -953,12 +969,11 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
         ]));
     await transaction.searchNames(['t', 'o']);
-
-    await client.close();
   });
 
   test('search files', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
@@ -969,9 +984,11 @@ void main() {
           MockPackage('two', '1.2', fileList: ['/usr/share/data/two.png']),
           MockPackage('three', '1.3', fileList: ['/usr/share/data/three.png'])
         ]);
+    addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     var transaction = await client.createTransaction();
@@ -985,12 +1002,11 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
         ]));
     await transaction.searchFiles(['two.png']);
-
-    await client.close();
   });
 
   test('download', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
@@ -1002,9 +1018,11 @@ void main() {
             MockPackage('hello', '2.10', arch: 'arm64', summary: summary)
           ]
         });
+    addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     var transaction = await client.createTransaction();
@@ -1019,12 +1037,11 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
         ]));
     await transaction.downloadPackages([packageId]);
-
-    await client.close();
   });
 
   test('depends on', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
@@ -1036,9 +1053,11 @@ void main() {
           MockPackage('child2', '1.2', dependsOn: ['grandchild']),
           MockPackage('grandchild', '1.2.1')
         ]);
+    addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     var transaction = await client.createTransaction();
@@ -1059,12 +1078,11 @@ void main() {
         ]));
     await transaction
         .dependsOn([PackageKitPackageId.fromString('parent;1;;installed')]);
-
-    await client.close();
   });
 
   test('depends on - recursive', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
@@ -1076,9 +1094,11 @@ void main() {
           MockPackage('child2', '1.2', dependsOn: ['grandchild']),
           MockPackage('grandchild', '1.2.1')
         ]);
+    addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     var transaction = await client.createTransaction();
@@ -1105,12 +1125,11 @@ void main() {
     await transaction.dependsOn(
         [PackageKitPackageId.fromString('parent;1;;installed')],
         recursive: true);
-
-    await client.close();
   });
 
   test('install', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
@@ -1122,9 +1141,11 @@ void main() {
             MockPackage('hello', '2.10', arch: 'arm64', summary: summary)
           ]
         });
+    addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     var transaction = await client.createTransaction();
@@ -1184,12 +1205,11 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
         ]));
     await transaction.installPackages([packageId]);
-
-    await client.close();
   });
 
   test('install - not found', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
@@ -1198,6 +1218,7 @@ void main() {
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     var transaction = await client.createTransaction();
@@ -1212,12 +1233,11 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.failed, runtime: 1234)
         ]));
     await transaction.installPackages([packageId]);
-
-    await client.close();
   });
 
   test('remove', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
@@ -1228,9 +1248,11 @@ void main() {
           MockPackage('hello', '2.10',
               arch: 'arm64', summary: 'example package based on GNU hello')
         ]);
+    addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     var transaction = await client.createTransaction();
@@ -1258,12 +1280,11 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
         ]));
     await transaction.removePackages([packageId]);
-
-    await client.close();
   });
 
   test('get files', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
@@ -1274,9 +1295,11 @@ void main() {
               arch: 'arm64',
               fileList: ['/usr/bin/hello', '/usr/share/man/man1/hello.1.gz'])
         ]);
+    addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     var transaction = await client.createTransaction();
@@ -1291,12 +1314,11 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
         ]));
     await transaction.getFiles([packageId]);
-
-    await client.close();
   });
 
   test('get repository list', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
@@ -1307,9 +1329,11 @@ void main() {
           MockRepository('enabled-repo2', 'Updates', true),
           MockRepository('disabled-repo', 'Universe', false)
         ]);
+    addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     var transaction = await client.createTransaction();
@@ -1325,12 +1349,11 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
         ]));
     await transaction.getRepositoryList();
-
-    await client.close();
   });
 
   test('refresh cache', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
@@ -1340,9 +1363,11 @@ void main() {
           MockRepository('enabled-repo', 'Main', true),
           MockRepository('disabled-repo', 'Universe', false)
         ]);
+    addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     var transaction = await client.createTransaction();
@@ -1356,12 +1381,11 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
         ]));
     await transaction.refreshCache();
-
-    await client.close();
   });
 
   test('get updates', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
@@ -1377,9 +1401,11 @@ void main() {
                 arch: 'arm64', summary: 'example package based on GNU hello')
           ]
         });
+    addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     var transaction = await client.createTransaction();
@@ -1394,12 +1420,11 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
         ]));
     await transaction.getUpdates();
-
-    await client.close();
   });
 
   test('update', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
@@ -1416,9 +1441,11 @@ void main() {
                 arch: 'arm64', summary: 'example package based on GNU hello')
           ]
         });
+    addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     var transaction = await client.createTransaction();
@@ -1438,12 +1465,11 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
         ]));
     await transaction.updatePackages([packageId]);
-
-    await client.close();
   });
 
   test('upgrade system', () async {
     var server = DBusServer();
+    addTearDown(() async => await server.close());
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
 
@@ -1451,9 +1477,11 @@ void main() {
       clientAddress,
       transactionRuntime: 1234,
     );
+    addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
     var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
     await client.connect();
 
     var transaction = await client.createTransaction();
@@ -1479,7 +1507,5 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
         ]));
     await transaction.upgradeSystem('impish', PackageKitDistroUpgrade.stable);
-
-    await client.close();
   });
 }
