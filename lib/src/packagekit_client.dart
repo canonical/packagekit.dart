@@ -372,6 +372,10 @@ class PackageKitPackageId {
       other.data == data;
 
   @override
+  int get hashCode =>
+      name.hashCode | version.hashCode | arch.hashCode | data.hashCode;
+
+  @override
   String toString() {
     return '$name;$version;$arch;$data';
   }
@@ -411,6 +415,9 @@ class PackageKitFilesEvent extends PackageKitEvent {
       _listsEqual(other.fileList, fileList);
 
   @override
+  int get hashCode => packageId.hashCode | fileList.hashCode;
+
+  @override
   String toString() =>
       "$runtimeType(packageId: '$packageId', fileList: $fileList)";
 }
@@ -428,6 +435,9 @@ class PackageKitErrorCodeEvent extends PackageKitEvent {
       other.details == details;
 
   @override
+  int get hashCode => code.hashCode | details.hashCode;
+
+  @override
   String toString() => "$runtimeType(code: $code, details: '$details')";
 }
 
@@ -442,6 +452,9 @@ class PackageKitFinishedEvent extends PackageKitEvent {
       other is PackageKitFinishedEvent &&
       other.exit == exit &&
       other.runtime == runtime;
+
+  @override
+  int get hashCode => exit.hashCode | runtime.hashCode;
 
   @override
   String toString() => '$runtimeType(exit: $exit, runtime: $runtime)';
@@ -463,6 +476,10 @@ class PackageKitItemProgressEvent extends PackageKitEvent {
       other.packageId == packageId &&
       other.status == status &&
       other.percentage == percentage;
+
+  @override
+  int get hashCode =>
+      packageId.hashCode | status.hashCode | percentage.hashCode;
 
   @override
   String toString() =>
@@ -487,6 +504,10 @@ class PackageKitMediaChangeRequiredEvent extends PackageKitEvent {
       other.mediaText == mediaText;
 
   @override
+  int get hashCode =>
+      mediaType.hashCode | mediaId.hashCode | mediaText.hashCode;
+
+  @override
   String toString() =>
       "PackageKitMediaChangeRequiredEvent(mediaType: $mediaType, mediaId: '$mediaId', mediaText: '$mediaText')";
 }
@@ -505,6 +526,9 @@ class PackageKitPackageEvent extends PackageKitEvent {
       other.info == info &&
       other.packageId == packageId &&
       other.summary == summary;
+
+  @override
+  int get hashCode => info.hashCode | packageId.hashCode | summary.hashCode;
 
   @override
   String toString() =>
@@ -527,6 +551,9 @@ class PackageKitRepositoryDetailEvent extends PackageKitEvent {
       other.enabled == enabled;
 
   @override
+  int get hashCode => repoId.hashCode | description.hashCode | enabled.hashCode;
+
+  @override
   String toString() =>
       "$runtimeType(repoId: '$repoId', description: '$description', enabled: $enabled)";
 }
@@ -543,6 +570,9 @@ class PackageKitRequireRestartEvent extends PackageKitEvent {
       other is PackageKitRequireRestartEvent &&
       other.type == type &&
       other.packageId == packageId;
+
+  @override
+  int get hashCode => type.hashCode | packageId.hashCode;
 
   @override
   String toString() => "$runtimeType(type: $type, packageId: '$packageId')";

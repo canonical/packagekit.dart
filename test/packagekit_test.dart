@@ -4,32 +4,32 @@ import 'package:dbus/dbus.dart';
 import 'package:test/test.dart';
 import 'package:packagekit/packagekit.dart';
 
-const int ErrorPackageNotFound = 8;
+const int errorPackageNotFound = 8;
 
-const int ExitSuccess = 1;
-const int ExitFailed = 2;
+const int exitSuccess = 1;
+const int exitFailed = 2;
 
-const int InfoInstalled = 1;
-const int InfoAvailable = 2;
-const int InfoNormal = 5;
-const int InfoDownloading = 10;
-const int InfoUpdating = 11;
-const int InfoInstalling = 12;
-const int InfoRemoving = 13;
-const int InfoFinished = 18;
-const int InfoPreparing = 21;
-const int InfoDecompressing = 22;
+const int infoInstalled = 1;
+const int infoAvailable = 2;
+const int infoNormal = 5;
+const int infoDownloading = 10;
+const int infoUpdating = 11;
+const int infoInstalling = 12;
+const int infoRemoving = 13;
+const int infoFinished = 18;
+const int infoPreparing = 21;
+const int infoDecompressing = 22;
 
-const int MediaTypeDvd = 2;
+const int mediaTypeDvd = 2;
 
-const int RestartSystem = 4;
+const int restartSystem = 4;
 
-const int StatusSetup = 2;
-const int StatusRemove = 6;
-const int StatusDownload = 8;
-const int StatusInstall = 9;
+const int statusSetup = 2;
+const int statusRemove = 6;
+const int statusDownload = 8;
+const int statusInstall = 9;
 
-const int FilterInstalled = 0x4;
+const int filterInstalled = 0x4;
 
 class MockPackageKitTransaction extends DBusObject {
   final MockPackageKitServer server;
@@ -52,7 +52,7 @@ class MockPackageKitTransaction extends DBusObject {
           for (var childPackageName in package.dependsOn) {
             var p = server.findInstalledByName(childPackageName);
             if (p != null) {
-              emitPackage(InfoInstalled,
+              emitPackage(infoInstalled,
                   '${p.name};${p.version};${p.arch};installed', p.summary);
               if (recursive) {
                 findDeps(p);
@@ -63,13 +63,13 @@ class MockPackageKitTransaction extends DBusObject {
         for (var id in packageIds) {
           var package = server.findInstalled(id);
           if (package == null) {
-            emitErrorCode(ErrorPackageNotFound, 'Package not found');
-            emitFinished(ExitFailed, server.transactionRuntime);
+            emitErrorCode(errorPackageNotFound, 'Package not found');
+            emitFinished(exitFailed, server.transactionRuntime);
             return DBusMethodSuccessResponse();
           }
           findDeps(package);
         }
-        emitFinished(ExitSuccess, server.transactionRuntime);
+        emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'DownloadPackages':
         var packageIds = (methodCall.values[1] as DBusArray)
@@ -78,8 +78,8 @@ class MockPackageKitTransaction extends DBusObject {
         for (var id in packageIds) {
           var package = server.findAvailable(id);
           if (package == null) {
-            emitErrorCode(ErrorPackageNotFound, 'Package not found');
-            emitFinished(ExitFailed, server.transactionRuntime);
+            emitErrorCode(errorPackageNotFound, 'Package not found');
+            emitFinished(exitFailed, server.transactionRuntime);
             return DBusMethodSuccessResponse();
           }
           var packageId = PackageKitPackageId.fromString(id);
@@ -87,7 +87,7 @@ class MockPackageKitTransaction extends DBusObject {
             '/var/cache/apt/archives/${packageId.name}_${packageId.version}_${packageId.arch}.deb'
           ]);
         }
-        emitFinished(ExitSuccess, server.transactionRuntime);
+        emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'GetFiles':
         var packageIds = (methodCall.values[0] as DBusArray)
@@ -96,36 +96,36 @@ class MockPackageKitTransaction extends DBusObject {
         for (var id in packageIds) {
           var package = server.findInstalled(id);
           if (package == null) {
-            emitErrorCode(ErrorPackageNotFound, 'Package not found');
-            emitFinished(ExitFailed, server.transactionRuntime);
+            emitErrorCode(errorPackageNotFound, 'Package not found');
+            emitFinished(exitFailed, server.transactionRuntime);
             return DBusMethodSuccessResponse();
           }
           emitFiles(id, package.fileList);
         }
-        emitFinished(ExitSuccess, server.transactionRuntime);
+        emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'GetPackages':
         var filter = (methodCall.values[0] as DBusUint64).value;
         for (var p in server.installedPackages) {
-          emitPackage(InfoInstalled,
+          emitPackage(infoInstalled,
               '${p.name};${p.version};${p.arch};installed', p.summary);
         }
-        if ((filter & FilterInstalled) == 0) {
+        if ((filter & filterInstalled) == 0) {
           for (var source in server.availablePackages.keys) {
             var packages = server.availablePackages[source]!;
             for (var p in packages) {
-              emitPackage(InfoAvailable,
+              emitPackage(infoAvailable,
                   '${p.name};${p.version};${p.arch};$source', p.summary);
             }
           }
         }
-        emitFinished(ExitSuccess, server.transactionRuntime);
+        emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'GetRepoList':
         for (var repo in server.repositories) {
           emitRepoDetail(repo.id, repo.description, repo.enabled);
         }
-        emitFinished(ExitSuccess, server.transactionRuntime);
+        emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'GetUpdates':
         for (var package in server.installedPackages) {
@@ -133,13 +133,13 @@ class MockPackageKitTransaction extends DBusObject {
             var packages = server.availablePackages[source]!;
             for (var p in packages) {
               if (p.name == package.name && p.version != package.version) {
-                emitPackage(InfoNormal,
+                emitPackage(infoNormal,
                     '${p.name};${p.version};${p.arch};$source', p.summary);
               }
             }
           }
         }
-        emitFinished(ExitSuccess, server.transactionRuntime);
+        emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'InstallPackages':
         var packageIds = (methodCall.values[1] as DBusArray)
@@ -148,30 +148,30 @@ class MockPackageKitTransaction extends DBusObject {
         for (var id in packageIds) {
           var package = server.findAvailable(id);
           if (package == null) {
-            emitErrorCode(ErrorPackageNotFound, 'Package not found');
-            emitFinished(ExitFailed, server.transactionRuntime);
+            emitErrorCode(errorPackageNotFound, 'Package not found');
+            emitFinished(exitFailed, server.transactionRuntime);
             return DBusMethodSuccessResponse();
           }
-          emitPackage(InfoDownloading, id, package.summary);
-          emitItemProgress(id, StatusDownload, 0);
-          emitItemProgress(id, StatusDownload, 21);
-          emitItemProgress(id, StatusDownload, 86);
-          emitPackage(InfoFinished, id, package.summary);
-          emitPackage(InfoPreparing, id, package.summary);
-          emitItemProgress(id, StatusSetup, 25);
-          emitPackage(InfoDecompressing, id, package.summary);
-          emitItemProgress(id, StatusSetup, 50);
-          emitPackage(InfoFinished, id, package.summary);
-          emitPackage(InfoInstalling, id, package.summary);
-          emitPackage(InfoFinished, id, package.summary);
+          emitPackage(infoDownloading, id, package.summary);
+          emitItemProgress(id, statusDownload, 0);
+          emitItemProgress(id, statusDownload, 21);
+          emitItemProgress(id, statusDownload, 86);
+          emitPackage(infoFinished, id, package.summary);
+          emitPackage(infoPreparing, id, package.summary);
+          emitItemProgress(id, statusSetup, 25);
+          emitPackage(infoDecompressing, id, package.summary);
+          emitItemProgress(id, statusSetup, 50);
+          emitPackage(infoFinished, id, package.summary);
+          emitPackage(infoInstalling, id, package.summary);
+          emitPackage(infoFinished, id, package.summary);
         }
-        emitFinished(ExitSuccess, server.transactionRuntime);
+        emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'RefreshCache':
         for (var repo in server.repositories) {
           emitRepoDetail(repo.id, repo.description, repo.enabled);
         }
-        emitFinished(ExitSuccess, server.transactionRuntime);
+        emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'RemovePackages':
         var packageIds = (methodCall.values[1] as DBusArray)
@@ -180,16 +180,16 @@ class MockPackageKitTransaction extends DBusObject {
         for (var id in packageIds) {
           var package = server.findInstalled(id);
           if (package == null) {
-            emitErrorCode(ErrorPackageNotFound, 'Package not found');
-            emitFinished(ExitFailed, server.transactionRuntime);
+            emitErrorCode(errorPackageNotFound, 'Package not found');
+            emitFinished(exitFailed, server.transactionRuntime);
             return DBusMethodSuccessResponse();
           }
-          emitPackage(InfoRemoving, id, package.summary);
-          emitItemProgress(id, StatusSetup, 50);
-          emitItemProgress(id, StatusRemove, 75);
-          emitPackage(InfoFinished, id, package.summary);
+          emitPackage(infoRemoving, id, package.summary);
+          emitItemProgress(id, statusSetup, 50);
+          emitItemProgress(id, statusRemove, 75);
+          emitPackage(infoFinished, id, package.summary);
         }
-        emitFinished(ExitSuccess, server.transactionRuntime);
+        emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'Resolve':
         var packageNames = (methodCall.values[1] as DBusArray)
@@ -198,12 +198,12 @@ class MockPackageKitTransaction extends DBusObject {
         for (var name in packageNames) {
           for (var p in server.installedPackages) {
             if (p.name == name) {
-              emitPackage(InfoInstalled,
+              emitPackage(infoInstalled,
                   '${p.name};${p.version};${p.arch};installed', p.summary);
             }
           }
         }
-        emitFinished(ExitSuccess, server.transactionRuntime);
+        emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'SearchFiles':
         var values = (methodCall.values[1] as DBusArray)
@@ -222,12 +222,12 @@ class MockPackageKitTransaction extends DBusObject {
         for (var p in server.installedPackages) {
           for (var path in p.fileList) {
             if (fileMatches(path)) {
-              emitPackage(InfoInstalled,
+              emitPackage(infoInstalled,
                   '${p.name};${p.version};${p.arch};installed', p.summary);
             }
           }
         }
-        emitFinished(ExitSuccess, server.transactionRuntime);
+        emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'SearchNames':
         var values = (methodCall.values[1] as DBusArray)
@@ -243,11 +243,11 @@ class MockPackageKitTransaction extends DBusObject {
         }
         for (var p in server.installedPackages) {
           if (nameMatches(p.name)) {
-            emitPackage(InfoInstalled,
+            emitPackage(infoInstalled,
                 '${p.name};${p.version};${p.arch};installed', p.summary);
           }
         }
-        emitFinished(ExitSuccess, server.transactionRuntime);
+        emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'SetHints':
         server.lastLocale = null;
@@ -283,7 +283,7 @@ class MockPackageKitTransaction extends DBusObject {
               break;
           }
         }
-        emitFinished(ExitSuccess, server.transactionRuntime);
+        emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'UpdatePackages':
         var packageIds = (methodCall.values[1] as DBusArray)
@@ -292,24 +292,24 @@ class MockPackageKitTransaction extends DBusObject {
         for (var id in packageIds) {
           var package = server.findAvailable(id);
           if (package == null) {
-            emitErrorCode(ErrorPackageNotFound, 'Package not found');
-            emitFinished(ExitFailed, server.transactionRuntime);
+            emitErrorCode(errorPackageNotFound, 'Package not found');
+            emitFinished(exitFailed, server.transactionRuntime);
             return DBusMethodSuccessResponse();
           }
-          emitPackage(InfoUpdating, id, package.summary);
-          emitPackage(InfoFinished, id, package.summary);
+          emitPackage(infoUpdating, id, package.summary);
+          emitPackage(infoFinished, id, package.summary);
         }
-        emitFinished(ExitSuccess, server.transactionRuntime);
+        emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'UpgradeSystem':
         var id = 'linux;2.0;arm64;installed';
         var summary = 'Linux kernel';
         emitMediaChangeRequired(
-            MediaTypeDvd, 'ubuntu-21-10.iso', 'Ubuntu 21.10 DVD');
-        emitPackage(InfoUpdating, id, summary);
-        emitPackage(InfoFinished, id, summary);
-        emitRequireRestart(RestartSystem, id);
-        emitFinished(ExitSuccess, server.transactionRuntime);
+            mediaTypeDvd, 'ubuntu-21-10.iso', 'Ubuntu 21.10 DVD');
+        emitPackage(infoUpdating, id, summary);
+        emitPackage(infoFinished, id, summary);
+        emitRequireRestart(restartSystem, id);
+        emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       default:
         return DBusMethodErrorResponse.unknownMethod();
