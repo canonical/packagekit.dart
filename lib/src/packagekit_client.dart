@@ -372,8 +372,7 @@ class PackageKitPackageId {
       other.data == data;
 
   @override
-  int get hashCode =>
-      name.hashCode | version.hashCode | arch.hashCode | data.hashCode;
+  int get hashCode => Object.hash(name, version, arch, data);
 
   @override
   String toString() {
@@ -415,7 +414,7 @@ class PackageKitFilesEvent extends PackageKitEvent {
       _listsEqual(other.fileList, fileList);
 
   @override
-  int get hashCode => packageId.hashCode | fileList.hashCode;
+  int get hashCode => Object.hash(packageId, fileList);
 
   @override
   String toString() =>
@@ -435,7 +434,7 @@ class PackageKitErrorCodeEvent extends PackageKitEvent {
       other.details == details;
 
   @override
-  int get hashCode => code.hashCode | details.hashCode;
+  int get hashCode => Object.hash(code, details);
 
   @override
   String toString() => "$runtimeType(code: $code, details: '$details')";
@@ -454,7 +453,7 @@ class PackageKitFinishedEvent extends PackageKitEvent {
       other.runtime == runtime;
 
   @override
-  int get hashCode => exit.hashCode | runtime.hashCode;
+  int get hashCode => Object.hash(exit, runtime);
 
   @override
   String toString() => '$runtimeType(exit: $exit, runtime: $runtime)';
@@ -478,8 +477,7 @@ class PackageKitItemProgressEvent extends PackageKitEvent {
       other.percentage == percentage;
 
   @override
-  int get hashCode =>
-      packageId.hashCode | status.hashCode | percentage.hashCode;
+  int get hashCode => Object.hash(packageId, status, percentage);
 
   @override
   String toString() =>
@@ -504,8 +502,7 @@ class PackageKitMediaChangeRequiredEvent extends PackageKitEvent {
       other.mediaText == mediaText;
 
   @override
-  int get hashCode =>
-      mediaType.hashCode | mediaId.hashCode | mediaText.hashCode;
+  int get hashCode => Object.hash(mediaType, mediaId, mediaText);
 
   @override
   String toString() =>
@@ -528,7 +525,7 @@ class PackageKitPackageEvent extends PackageKitEvent {
       other.summary == summary;
 
   @override
-  int get hashCode => info.hashCode | packageId.hashCode | summary.hashCode;
+  int get hashCode => Object.hash(info, packageId, summary);
 
   @override
   String toString() =>
@@ -551,7 +548,7 @@ class PackageKitRepositoryDetailEvent extends PackageKitEvent {
       other.enabled == enabled;
 
   @override
-  int get hashCode => repoId.hashCode | description.hashCode | enabled.hashCode;
+  int get hashCode => Object.hash(repoId, description, enabled);
 
   @override
   String toString() =>
@@ -572,7 +569,7 @@ class PackageKitRequireRestartEvent extends PackageKitEvent {
       other.packageId == packageId;
 
   @override
-  int get hashCode => type.hashCode | packageId.hashCode;
+  int get hashCode => Object.hash(type, packageId);
 
   @override
   String toString() => "$runtimeType(type: $type, packageId: '$packageId')";
