@@ -395,12 +395,17 @@ class PackageKitPackageId {
   }
 }
 
+/// An event received from the backend.
 class PackageKitEvent {
   const PackageKitEvent();
 }
 
+/// An unknown event received from the backend.
 class PackageKitUnknownEvent extends PackageKitEvent {
+  /// The name of the event.
   final String name;
+
+  /// Information with the event.
   final List<DBusValue> values;
 
   PackageKitUnknownEvent(this.name, this.values);
@@ -416,8 +421,12 @@ class PackageKitDestroyEvent extends PackageKitEvent {
   String toString() => '$runtimeType()';
 }
 
+/// An event from the backend to pass a file list.
 class PackageKitFilesEvent extends PackageKitEvent {
+  /// The ID of the package this event relates to.
   final PackageKitPackageId packageId;
+
+  /// List of filenames.
   final List<String> fileList;
 
   PackageKitFilesEvent({required this.packageId, required this.fileList});
@@ -436,8 +445,12 @@ class PackageKitFilesEvent extends PackageKitEvent {
       "$runtimeType(packageId: '$packageId', fileList: $fileList)";
 }
 
+/// An event from the backend to indicate an error occurred.
 class PackageKitErrorCodeEvent extends PackageKitEvent {
+  /// The type of error.
   final PackageKitError code;
+
+  /// Long description of error, e.g. "failed to download package".
   final String details;
 
   const PackageKitErrorCodeEvent({required this.code, required this.details});
@@ -742,6 +755,7 @@ class PackageKitTransaction {
   }
 
   /// Get the file lists for the packages with [packageIds].
+  /// This method typically generates [PackageKitItemProgressEvent], [PackageKitErrorCodeEvent] and [PackageKitFilesEvent] events.
   Future<void> getFiles(Iterable<PackageKitPackageId> packageIds) async {
     await _object.callMethod(_packageKitTransactionInterfaceName, 'GetFiles',
         [DBusArray.string(packageIds.map((id) => id.toString()))],
