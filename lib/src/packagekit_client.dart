@@ -600,9 +600,11 @@ class PackageKitTransaction {
           if (signal.signature != DBusSignature('us')) {
             throw 'Invalid ${signal.name} signal';
           }
+          var codeValue = (signal.values[0] as DBusUint32).value;
           return PackageKitErrorCodeEvent(
-              code: PackageKitError
-                  .values[(signal.values[0] as DBusUint32).value],
+              code: codeValue < PackageKitError.values.length
+                  ? PackageKitError.values[codeValue]
+                  : PackageKitError.unknown,
               details: (signal.values[1] as DBusString).value);
         case 'Files':
           if (signal.signature != DBusSignature('sas')) {
@@ -619,36 +621,44 @@ class PackageKitTransaction {
           if (signal.signature != DBusSignature('uu')) {
             throw 'Invalid ${signal.name} signal';
           }
+          var exitValue = (signal.values[0] as DBusUint32).value;
           return PackageKitFinishedEvent(
-              exit:
-                  PackageKitExit.values[(signal.values[0] as DBusUint32).value],
+              exit: exitValue < PackageKitExit.values.length
+                  ? PackageKitExit.values[exitValue]
+                  : PackageKitExit.unknown,
               runtime: (signal.values[1] as DBusUint32).value);
         case 'ItemProgress':
           if (signal.signature != DBusSignature('suu')) {
             throw 'Invalid ${signal.name} signal';
           }
+          var statusValue = (signal.values[1] as DBusUint32).value;
           return PackageKitItemProgressEvent(
               packageId: PackageKitPackageId.fromString(
                   (signal.values[0] as DBusString).value),
-              status: PackageKitStatus
-                  .values[(signal.values[1] as DBusUint32).value],
+              status: statusValue < PackageKitStatus.values.length
+                  ? PackageKitStatus.values[statusValue]
+                  : PackageKitStatus.unknown,
               percentage: (signal.values[2] as DBusUint32).value);
         case 'MediaChangeRequired':
           if (signal.signature != DBusSignature('uss')) {
             throw 'Invalid ${signal.name} signal';
           }
+          var mediaTypeValue = (signal.values[0] as DBusUint32).value;
           return PackageKitMediaChangeRequiredEvent(
-              mediaType: PackageKitMediaType
-                  .values[(signal.values[0] as DBusUint32).value],
+              mediaType: mediaTypeValue < PackageKitMediaType.values.length
+                  ? PackageKitMediaType.values[mediaTypeValue]
+                  : PackageKitMediaType.unknown,
               mediaId: (signal.values[1] as DBusString).value,
               mediaText: (signal.values[2] as DBusString).value);
         case 'Package':
           if (signal.signature != DBusSignature('uss')) {
             throw 'Invalid ${signal.name} signal';
           }
+          var infoValue = (signal.values[0] as DBusUint32).value;
           return PackageKitPackageEvent(
-              info:
-                  PackageKitInfo.values[(signal.values[0] as DBusUint32).value],
+              info: infoValue < PackageKitInfo.values.length
+                  ? PackageKitInfo.values[infoValue]
+                  : PackageKitInfo.unknown,
               packageId: PackageKitPackageId.fromString(
                   (signal.values[1] as DBusString).value),
               summary: (signal.values[2] as DBusString).value);
@@ -664,9 +674,11 @@ class PackageKitTransaction {
           if (signal.signature != DBusSignature('us')) {
             throw 'Invalid ${signal.name} signal';
           }
+          var typeValue = (signal.values[0] as DBusUint32).value;
           return PackageKitRequireRestartEvent(
-              type: PackageKitRestart
-                  .values[(signal.values[0] as DBusUint32).value],
+              type: typeValue < PackageKitRestart.values.length
+                  ? PackageKitRestart.values[typeValue]
+                  : PackageKitRestart.unknown,
               packageId: PackageKitPackageId.fromString(
                   (signal.values[1] as DBusString).value));
         default:
@@ -858,8 +870,13 @@ class PackageKitClient {
       .toList();
   Set<PackageKitRole> get roles =>
       _decodeRoles((_properties['Roles'] as DBusUint64).value);
-  PackageKitNetworkState get networkState => PackageKitNetworkState
-      .values[(_properties['NetworkState'] as DBusUint32).value];
+  PackageKitNetworkState get networkState {
+    var value = (_properties['NetworkState'] as DBusUint32).value;
+    return value < PackageKitNetworkState.values.length
+        ? PackageKitNetworkState.values[value]
+        : PackageKitNetworkState.unknown;
+  }
+
   int get versionMajor => (_properties['VersionMajor'] as DBusUint32).value;
   int get versionMinor => (_properties['VersionMinor'] as DBusUint32).value;
   int get versionMicro => (_properties['VersionMicro'] as DBusUint32).value;
