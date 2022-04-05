@@ -8,6 +8,7 @@ const _packageKitInterfaceName = 'org.freedesktop.PackageKit';
 const _packageKitTransactionInterfaceName =
     'org.freedesktop.PackageKit.Transaction';
 
+/// The type of distribution upgrade, as used in [PackageKitTransaction.upgradeSystem].
 enum PackageKitDistroUpgrade { unknown, stable, unstable }
 
 /// Errors returned by the PackageKit daemon.
@@ -83,6 +84,7 @@ enum PackageKitError {
   repositoryAlreadySet
 }
 
+/// The exit status of a [PackageKitTransaction].
 enum PackageKitExit {
   unknown,
   success,
@@ -148,7 +150,7 @@ int _encodeFilters(Set<PackageKitFilter> filter) {
   return value;
 }
 
-/// Group a package belongs to.
+/// Groups a package belongs to.
 enum PackageKitGroup {
   unknown,
   accessibility,
@@ -233,6 +235,7 @@ enum PackageKitMediaType { unknown, cd, dvd, disc }
 /// State of the network.
 enum PackageKitNetworkState { unknown, offline, online, wired, wifi, mobile }
 
+/// Roles a backend supports.
 enum PackageKitRole {
   unknown,
   cancel,
@@ -332,6 +335,7 @@ enum PackageKitStatus {
   runHook
 }
 
+/// Flags passed to methods on [PackageKitTransaction].
 enum PackageKitTransactionFlag {
   onlyTrusted,
   simulate,
@@ -644,6 +648,8 @@ class PackageKitTransaction {
   /// Events returned from the backend.
   late final Stream<PackageKitEvent> events;
 
+  /// Creates a PackageKit transaction from [objectPath].
+  /// This is only required if accessing an existing transaction, otherwise use [PackageKitClient.createTransaction].
   PackageKitTransaction(DBusClient bus, DBusObjectPath objectPath)
       : _object =
             DBusRemoteObject(bus, name: _packageKitBusName, path: objectPath) {
@@ -749,12 +755,14 @@ class PackageKitTransaction {
     });
   }
 
-  /// Cancel this transactions.
+  /// Cancel this transaction.
   Future<void> cancel() async {
     await _object.callMethod(_packageKitTransactionInterfaceName, 'Cancel', [],
         replySignature: DBusSignature(''));
   }
 
+  /// Get the packages that the packages with [packageIds] depend on.
+  /// This method generates a [PackageKitPackageEvent] event for each package that is depended on.
   Future<void> dependsOn(Iterable<PackageKitPackageId> packageIds,
       {Set<PackageKitFilter> filter = const {}, bool recursive = false}) async {
     await _object.callMethod(
@@ -769,6 +777,7 @@ class PackageKitTransaction {
   }
 
   /// Downloads the packages with [packageIds] into a temporary directory.
+  /// This method generates a [PackageKitFilesEvent] event for each package file that is downloaded.
   Future<void> downloadPackages(Iterable<PackageKitPackageId> packageIds,
       {bool storeInCache = false}) async {
     await _object.callMethod(
@@ -782,19 +791,23 @@ class PackageKitTransaction {
   }
 
   /// Get the file lists for the packages with [packageIds].
-  /// This method typically generates [PackageKitItemProgressEvent], [PackageKitErrorCodeEvent] and [PackageKitFilesEvent] events.
+  /// This method generates a [PackageKitFilesEvent] event for each file in these packages.
   Future<void> getFiles(Iterable<PackageKitPackageId> packageIds) async {
     await _object.callMethod(_packageKitTransactionInterfaceName, 'GetFiles',
         [DBusArray.string(packageIds.map((id) => id.toString()))],
         replySignature: DBusSignature(''));
   }
 
+  /// Gets all the available and installed packages.
+  /// This method generates a [PackageKitPackageEvent] event for each package.
   Future<void> getPackages({Set<PackageKitFilter> filter = const {}}) async {
     await _object.callMethod(_packageKitTransactionInterfaceName, 'GetPackages',
         [DBusUint64(_encodeFilters(filter))],
         replySignature: DBusSignature(''));
   }
 
+  /// Gets the list of repositories used in the system.
+  /// This method generates a [PackageKitRepositoryDetailEvent] for each repository.
   Future<void> getRepositoryList(
       {Set<PackageKitFilter> filter = const {}}) async {
     await _object.callMethod(_packageKitTransactionInterfaceName, 'GetRepoList',
@@ -802,6 +815,8 @@ class PackageKitTransaction {
         replySignature: DBusSignature(''));
   }
 
+  /// Gets all the installed packages that can be upgraded.
+  /// This method generates a [PackageKitPackageEvent] event for each package.
   Future<void> getUpdates({Set<PackageKitFilter> filter = const {}}) async {
     await _object.callMethod(_packageKitTransactionInterfaceName, 'GetUpdates',
         [DBusUint64(_encodeFilters(filter))],
@@ -809,7 +824,7 @@ class PackageKitTransaction {
   }
 
   /// Install new packages with [packageIds] on the local system.
-  /// This method typically generates [PackageKitItemProgressEvent], [PackageKitErrorCodeEvent] and [PackageKitPackageEvent] events.
+  /// This method generates a [PackageKitPackageEvent] event for each package that is installed.
   Future<void> installPackages(Iterable<PackageKitPackageId> packageIds,
       {Set<PackageKitTransactionFlag> transactionFlags = const {}}) async {
     await _object.callMethod(
@@ -822,6 +837,8 @@ class PackageKitTransaction {
         replySignature: DBusSignature(''));
   }
 
+  /// Fetch updated metadata for all enabled repositories.
+  /// This method generates a [PackageKitRepositoryDetailEvent] event for each repository that is updated.
   Future<void> refreshCache({bool force = false}) async {
     await _object.callMethod(_packageKitTransactionInterfaceName,
         'RefreshCache', [DBusBoolean(force)],
@@ -829,7 +846,7 @@ class PackageKitTransaction {
   }
 
   /// Remove packages with [packageIds] from the local system.
-  /// This method typically generates [PackageKitItemProgressEvent], [PackageKitErrorCodeEvent] and [PackageKitPackageEvent] events.
+  /// This method generates a [PackageKitPackageEvent] event for each package that is removed.
   Future<void> removePackages(Iterable<PackageKitPackageId> packageIds,
       {Set<PackageKitTransactionFlag> transactionFlags = const {},
       bool allowDeps = false,
@@ -846,6 +863,8 @@ class PackageKitTransaction {
         replySignature: DBusSignature(''));
   }
 
+  /// Resolved the named [packages] into package IDs.
+  /// This method generates a [PackageKitPackageEvent] event for each package.
   Future<void> resolve(Iterable<String> packages,
       {Set<PackageKitTransactionFlag> transactionFlags = const {}}) async {
     await _object.callMethod(
@@ -858,6 +877,8 @@ class PackageKitTransaction {
         replySignature: DBusSignature(''));
   }
 
+  /// Search the package database by for packages that provide the files given in [values].
+  /// This method generates a [PackageKitPackageEvent] event for each package found.
   Future<void> searchFiles(Iterable<String> values,
       {Set<PackageKitFilter> filter = const {}}) async {
     await _object.callMethod(_packageKitTransactionInterfaceName, 'SearchFiles',
@@ -865,6 +886,8 @@ class PackageKitTransaction {
         replySignature: DBusSignature(''));
   }
 
+  /// Search the package database by for packages with the search terms given in [values].
+  /// This method generates a [PackageKitPackageEvent] event for each package found.
   Future<void> searchNames(Iterable<String> values,
       {Set<PackageKitFilter> filter = const {}}) async {
     await _object.callMethod(_packageKitTransactionInterfaceName, 'SearchNames',
@@ -878,6 +901,8 @@ class PackageKitTransaction {
         replySignature: DBusSignature(''));
   }
 
+  /// Update existing packages on the local system.
+  /// This method generates a [PackageKitPackageEvent] event for each package being updated.
   Future<void> updatePackages(Iterable<PackageKitPackageId> packageIds,
       {Set<PackageKitTransactionFlag> transactionFlags = const {}}) async {
     await _object.callMethod(
@@ -890,6 +915,7 @@ class PackageKitTransaction {
         replySignature: DBusSignature(''));
   }
 
+  /// Perform a distribution upgrade to the distribution given by [distroId].
   Future<void> upgradeSystem(
       String distroId, PackageKitDistroUpgrade upgradeKind,
       {Set<PackageKitTransactionFlag> transactionFlags = const {}}) async {
