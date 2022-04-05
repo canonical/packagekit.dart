@@ -10,6 +10,7 @@ const _packageKitTransactionInterfaceName =
 
 enum PackageKitDistroUpgrade { unknown, stable, unstable }
 
+/// Errors returned by the PackageKit daemon.
 enum PackageKitError {
   unknown,
   outOfMemory,
@@ -97,6 +98,7 @@ enum PackageKitExit {
   repairRequired
 }
 
+/// Filters used to query packages.
 enum PackageKitFilter {
   unknown,
   none,
@@ -146,6 +148,7 @@ int _encodeFilters(Set<PackageKitFilter> filter) {
   return value;
 }
 
+/// Group a package belongs to.
 enum PackageKitGroup {
   unknown,
   accessibility,
@@ -194,6 +197,7 @@ Set<PackageKitGroup> _decodeGroups(int mask) {
   return groups;
 }
 
+/// Information about a package, as returned in [PackageKitPackageEvent].
 enum PackageKitInfo {
   unknown,
   installed,
@@ -223,8 +227,10 @@ enum PackageKitInfo {
   unavailable
 }
 
+/// Type of media containing packages.
 enum PackageKitMediaType { unknown, cd, dvd, disc }
 
+/// State of the network.
 enum PackageKitNetworkState { unknown, offline, online, wired, wifi, mobile }
 
 enum PackageKitRole {
@@ -274,6 +280,7 @@ Set<PackageKitRole> _decodeRoles(int mask) {
   return roles;
 }
 
+/// Type of restart required in a [PackageKitRequireRestartEvent].
 enum PackageKitRestart {
   unknown,
   none,
@@ -284,6 +291,7 @@ enum PackageKitRestart {
   securitySystem
 }
 
+/// Status of a [PackageKitItemProgressEvent].
 enum PackageKitStatus {
   unknown,
   wait,
@@ -341,10 +349,17 @@ int _encodeTransactionFlags(Set<PackageKitTransactionFlag> flags) {
   return value;
 }
 
+/// An ID that uniquely identifies a package.
 class PackageKitPackageId {
+  /// The name of the package, e.g. "zenity".
   final String name;
+
+  /// The version of the package, e.g. "1.2.3".
   final String version;
+
+  /// The architecture of the package, e.g. "amd64".
   final String arch;
+
   final String data;
 
   const PackageKitPackageId(
@@ -509,9 +524,15 @@ class PackageKitMediaChangeRequiredEvent extends PackageKitEvent {
       "PackageKitMediaChangeRequiredEvent(mediaType: $mediaType, mediaId: '$mediaId', mediaText: '$mediaText')";
 }
 
+/// An event from the backend to indicate a package.
 class PackageKitPackageEvent extends PackageKitEvent {
+  /// Information about this package.
   final PackageKitInfo info;
+
+  /// The id for this package.
   final PackageKitPackageId packageId;
+
+  /// The one line package summary, e.g. "Clipart for OpenOffice".
   final String summary;
 
   const PackageKitPackageEvent(
@@ -580,6 +601,7 @@ class PackageKitTransaction {
   /// Remote transaction object.
   final DBusRemoteObject _object;
 
+  /// Events returned from the backend.
   late final Stream<PackageKitEvent> events;
 
   PackageKitTransaction(DBusClient bus, DBusObjectPath objectPath)
@@ -687,6 +709,7 @@ class PackageKitTransaction {
     });
   }
 
+  /// Cancel this transactions.
   Future<void> cancel() async {
     await _object.callMethod(_packageKitTransactionInterfaceName, 'Cancel', [],
         replySignature: DBusSignature(''));
@@ -705,6 +728,7 @@ class PackageKitTransaction {
         replySignature: DBusSignature(''));
   }
 
+  /// Downloads the packages with [packageIds] into a temporary directory.
   Future<void> downloadPackages(Iterable<PackageKitPackageId> packageIds,
       {bool storeInCache = false}) async {
     await _object.callMethod(
@@ -717,6 +741,7 @@ class PackageKitTransaction {
         replySignature: DBusSignature(''));
   }
 
+  /// Get the file lists for the packages with [packageIds].
   Future<void> getFiles(Iterable<PackageKitPackageId> packageIds) async {
     await _object.callMethod(_packageKitTransactionInterfaceName, 'GetFiles',
         [DBusArray.string(packageIds.map((id) => id.toString()))],
@@ -742,6 +767,8 @@ class PackageKitTransaction {
         replySignature: DBusSignature(''));
   }
 
+  /// Install new packages with [packageIds] on the local system.
+  /// This method typically generates [PackageKitItemProgressEvent], [PackageKitErrorCodeEvent] and [PackageKitPackageEvent] events.
   Future<void> installPackages(Iterable<PackageKitPackageId> packageIds,
       {Set<PackageKitTransactionFlag> transactionFlags = const {}}) async {
     await _object.callMethod(
@@ -760,6 +787,8 @@ class PackageKitTransaction {
         replySignature: DBusSignature(''));
   }
 
+  /// Remove packages with [packageIds] from the local system.
+  /// This method typically generates [PackageKitItemProgressEvent], [PackageKitErrorCodeEvent] and [PackageKitPackageEvent] events.
   Future<void> removePackages(Iterable<PackageKitPackageId> packageIds,
       {Set<PackageKitTransactionFlag> transactionFlags = const {},
       bool allowDeps = false,
