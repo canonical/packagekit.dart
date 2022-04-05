@@ -414,6 +414,7 @@ class PackageKitUnknownEvent extends PackageKitEvent {
   String toString() => "$runtimeType('$name', $values)";
 }
 
+/// And event when a [PackageKitTransaction] is complete.
 class PackageKitDestroyEvent extends PackageKitEvent {
   const PackageKitDestroyEvent();
 
@@ -468,8 +469,12 @@ class PackageKitErrorCodeEvent extends PackageKitEvent {
   String toString() => "$runtimeType(code: $code, details: '$details')";
 }
 
+/// An event from the backend to indicate the transaction has finished.
 class PackageKitFinishedEvent extends PackageKitEvent {
+  /// The exit status of the transaction.
   final PackageKitExit exit;
+
+  /// The amount of time in milliseconds that the transaction ran for.
   final int runtime;
 
   const PackageKitFinishedEvent({required this.exit, required this.runtime});
@@ -487,9 +492,15 @@ class PackageKitFinishedEvent extends PackageKitEvent {
   String toString() => '$runtimeType(exit: $exit, runtime: $runtime)';
 }
 
+/// An event from the backend to update the progress of the transaction.
 class PackageKitItemProgressEvent extends PackageKitEvent {
+  /// The ID of the package this event relates to.
   final PackageKitPackageId packageId;
+
+  /// The status of the package.
   final PackageKitStatus status;
+
+  /// The percentage of this package action is completed.
   final int percentage;
 
   const PackageKitItemProgressEvent(
@@ -512,9 +523,15 @@ class PackageKitItemProgressEvent extends PackageKitEvent {
       "PackageKitItemProgressEvent(packageId: '$packageId', status: $status, percentage: $percentage)";
 }
 
+/// An event from the backend to indicate a media change is required to get packages.
 class PackageKitMediaChangeRequiredEvent extends PackageKitEvent {
+  /// The type of media required.
   final PackageKitMediaType mediaType;
+
+  /// An ID to indicate which media is required.
   final String mediaId;
+
+  /// A label that is on the media, e.g. "Fedora Disk 1".
   final String mediaText;
 
   const PackageKitMediaChangeRequiredEvent(
@@ -566,9 +583,15 @@ class PackageKitPackageEvent extends PackageKitEvent {
       "$runtimeType(info: $info, packageId: '$packageId', summary: '$summary')";
 }
 
+/// An event from the backend to describe a repository on the system.
 class PackageKitRepositoryDetailEvent extends PackageKitEvent {
+  /// The ID of the repository.
   final String repoId;
+
+  /// A description of the repository.
   final String description;
+
+  /// True if the repository is enabled an in use.
   final bool enabled;
 
   const PackageKitRepositoryDetailEvent(
@@ -589,8 +612,12 @@ class PackageKitRepositoryDetailEvent extends PackageKitEvent {
       "$runtimeType(repoId: '$repoId', description: '$description', enabled: $enabled)";
 }
 
+/// An event from the backend to indicate the something requires restarting to complete the transaction.
 class PackageKitRequireRestartEvent extends PackageKitEvent {
+  /// The type of restart required.
   final PackageKitRestart type;
+
+  /// The ID of the package that caused the restart.
   final PackageKitPackageId packageId;
 
   const PackageKitRequireRestartEvent(
