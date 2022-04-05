@@ -853,23 +853,41 @@ class PackageKitClient {
   bool idle = true;
   int cacheAge = 0xffffffff;
 
+  ///  The backend author, e.g. "Joe Bloggs <joe@blogs.com>"
   String get backendAuthor =>
       (_properties['BackendAuthor'] as DBusString).value;
+
+  /// The backend description, e.g. "Yellow Dog Update Modifier"
   String get backendDescription =>
       (_properties['BackendDescription'] as DBusString).value;
+
+  /// The backend name, e.g. "dnf"
   String get backendName => (_properties['BackendName'] as DBusString).value;
+
   String get distroId => (_properties['DistroId'] as DBusString).value;
+
+  /// The filters the backend supports.
   Set<PackageKitFilter> get filters =>
       _decodeFilters((_properties['Filters'] as DBusUint64).value);
+
+  /// The groups the backend supports.
   Set<PackageKitGroup> get groups =>
       _decodeGroups((_properties['Groups'] as DBusUint64).value);
+
+  /// Set when the backend is locked and native tools would fail.
   bool get locked => (_properties['Locked'] as DBusBoolean).value;
+
   List<String> get mimeTypes => (_properties['MimeTypes'] as DBusArray)
       .children
       .map((value) => (value as DBusString).value)
       .toList();
+
+  /// The roles the backend supports.
   Set<PackageKitRole> get roles =>
       _decodeRoles((_properties['Roles'] as DBusUint64).value);
+
+  /// The network state from the daemon. This is provided as some clients may not want
+  /// to use NetworkManager if the system daemon is configured to use something else.
   PackageKitNetworkState get networkState {
     var value = (_properties['NetworkState'] as DBusUint32).value;
     return value < PackageKitNetworkState.values.length
@@ -877,8 +895,13 @@ class PackageKitClient {
         : PackageKitNetworkState.unknown;
   }
 
+  /// The major version number of the PackageKit daemon.
   int get versionMajor => (_properties['VersionMajor'] as DBusUint32).value;
+
+  /// The minor version number of the PackageKit daemon.
   int get versionMinor => (_properties['VersionMinor'] as DBusUint32).value;
+
+  /// The micro version number of the PackageKit daemon.
   int get versionMicro => (_properties['VersionMicro'] as DBusUint32).value;
 
   /// Creates a new PackageKit client connected to the system D-Bus.
@@ -895,6 +918,7 @@ class PackageKitClient {
     _properties.addAll(await _root.getAllProperties(_packageKitInterfaceName));
   }
 
+  /// Creates a new transaction that can have operations done on it.
   Future<PackageKitTransaction> createTransaction() async {
     var result = await _root.callMethod(
         _packageKitInterfaceName, 'CreateTransaction', [],
