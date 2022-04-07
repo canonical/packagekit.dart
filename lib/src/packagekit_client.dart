@@ -942,6 +942,9 @@ class PackageKitClient {
 
   /// Properties on the root object.
   final _properties = <String, DBusValue>{};
+  StreamSubscription? _propertiesChangedSubscription;
+  final _propertiesChangedController =
+      StreamController<List<String>>.broadcast();
 
   String? locale;
   bool background = false;
@@ -974,6 +977,7 @@ class PackageKitClient {
   /// Set when the backend is locked and native tools would fail.
   bool get locked => (_properties['Locked'] as DBusBoolean).value;
 
+  /// The mime-types the backend supports, e.g. ['application/x-rpm', 'application/x-deb'].
   List<String> get mimeTypes => (_properties['MimeTypes'] as DBusArray)
       .children
       .map((value) => (value as DBusString).value)
@@ -1001,6 +1005,10 @@ class PackageKitClient {
   /// The micro version number of the PackageKit daemon.
   int get versionMicro => (_properties['VersionMicro'] as DBusUint32).value;
 
+  /// Stream of property names as they change.
+  Stream<List<String>> get propertiesChanged =>
+      _propertiesChangedController.stream;
+
   /// Creates a new PackageKit client connected to the system D-Bus.
   PackageKitClient({DBusClient? bus})
       : _bus = bus ?? DBusClient.system(),
@@ -1012,7 +1020,17 @@ class PackageKitClient {
 
   /// Connects to the PackageKit daemon.
   Future<void> connect() async {
-    _properties.addAll(await _root.getAllProperties(_packageKitInterfaceName));
+    // Already connected
+    if (_propertiesChangedSubscription != null) {
+      return;
+    }
+
+    _propertiesChangedSubscription = _root.propertiesChanged.listen((signal) {
+      if (signal.propertiesInterface == _packageKitInterfaceName) {
+        _updateProperties(signal.changedProperties);
+      }
+    });
+    _updateProperties(await _root.getAllProperties(_packageKitInterfaceName));
   }
 
   /// Creates a new transaction that can have operations done on it.
@@ -1038,9 +1056,18 @@ class PackageKitClient {
 
   /// Terminates the connection to the PackageKit daemon. If a client remains unclosed, the Dart process may not terminate.
   Future<void> close() async {
+    if (_propertiesChangedSubscription != null) {
+      await _propertiesChangedSubscription!.cancel();
+      _propertiesChangedSubscription = null;
+    }
     if (_closeBus) {
       await _bus.close();
     }
+  }
+
+  void _updateProperties(Map<String, DBusValue> properties) {
+    _properties.addAll(properties);
+    _propertiesChangedController.add(properties.keys.toList());
   }
 }
 
