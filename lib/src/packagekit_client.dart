@@ -960,6 +960,7 @@ class PackageKitClient {
   /// The backend name, e.g. "dnf"
   String get backendName => (_properties['BackendName'] as DBusString).value;
 
+  /// The distribution identification, in the distro;version;arch form e.g. "debian;squeeze/sid;x86_64"
   String get distroId => (_properties['DistroId'] as DBusString).value;
 
   /// The filters the backend supports.
