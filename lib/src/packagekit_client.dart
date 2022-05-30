@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart';
 import 'package:dbus/dbus.dart';
 
 /// D-Bus interface names.
@@ -383,12 +384,15 @@ class PackageKitPackageId {
   }
 
   @override
-  bool operator ==(other) =>
-      other is PackageKitPackageId &&
-      other.name == name &&
-      other.version == version &&
-      other.arch == arch &&
-      other.data == data;
+  bool operator ==(other) {
+    if (identical(this, other)) return true;
+
+    return other is PackageKitPackageId &&
+        other.name == name &&
+        other.version == version &&
+        other.arch == arch &&
+        other.data == data;
+  }
 
   @override
   int get hashCode => Object.hash(name, version, arch, data);
@@ -437,10 +441,14 @@ class PackageKitFilesEvent extends PackageKitEvent {
   PackageKitFilesEvent({required this.packageId, required this.fileList});
 
   @override
-  bool operator ==(other) =>
-      other is PackageKitFilesEvent &&
-      other.packageId == packageId &&
-      _listsEqual(other.fileList, fileList);
+  bool operator ==(other) {
+    if (identical(this, other)) return true;
+    final listEquals = const DeepCollectionEquality().equals;
+
+    return other is PackageKitFilesEvent &&
+        other.packageId == packageId &&
+        listEquals(other.fileList, fileList);
+  }
 
   @override
   int get hashCode => Object.hash(packageId, fileList);
@@ -461,10 +469,13 @@ class PackageKitErrorCodeEvent extends PackageKitEvent {
   const PackageKitErrorCodeEvent({required this.code, required this.details});
 
   @override
-  bool operator ==(other) =>
-      other is PackageKitErrorCodeEvent &&
-      other.code == code &&
-      other.details == details;
+  bool operator ==(other) {
+    if (identical(this, other)) return true;
+
+    return other is PackageKitErrorCodeEvent &&
+        other.code == code &&
+        other.details == details;
+  }
 
   @override
   int get hashCode => Object.hash(code, details);
@@ -484,10 +495,13 @@ class PackageKitFinishedEvent extends PackageKitEvent {
   const PackageKitFinishedEvent({required this.exit, required this.runtime});
 
   @override
-  bool operator ==(other) =>
-      other is PackageKitFinishedEvent &&
-      other.exit == exit &&
-      other.runtime == runtime;
+  bool operator ==(other) {
+    if (identical(this, other)) return true;
+
+    return other is PackageKitFinishedEvent &&
+        other.exit == exit &&
+        other.runtime == runtime;
+  }
 
   @override
   int get hashCode => Object.hash(exit, runtime);
@@ -513,11 +527,14 @@ class PackageKitItemProgressEvent extends PackageKitEvent {
       required this.percentage});
 
   @override
-  bool operator ==(other) =>
-      other is PackageKitItemProgressEvent &&
-      other.packageId == packageId &&
-      other.status == status &&
-      other.percentage == percentage;
+  bool operator ==(other) {
+    if (identical(this, other)) return true;
+
+    return other is PackageKitItemProgressEvent &&
+        other.packageId == packageId &&
+        other.status == status &&
+        other.percentage == percentage;
+  }
 
   @override
   int get hashCode => Object.hash(packageId, status, percentage);
@@ -544,11 +561,14 @@ class PackageKitMediaChangeRequiredEvent extends PackageKitEvent {
       required this.mediaText});
 
   @override
-  bool operator ==(other) =>
-      other is PackageKitMediaChangeRequiredEvent &&
-      other.mediaType == mediaType &&
-      other.mediaId == mediaId &&
-      other.mediaText == mediaText;
+  bool operator ==(other) {
+    if (identical(this, other)) return true;
+
+    return other is PackageKitMediaChangeRequiredEvent &&
+        other.mediaType == mediaType &&
+        other.mediaId == mediaId &&
+        other.mediaText == mediaText;
+  }
 
   @override
   int get hashCode => Object.hash(mediaType, mediaId, mediaText);
@@ -573,11 +593,14 @@ class PackageKitPackageEvent extends PackageKitEvent {
       {required this.info, required this.packageId, required this.summary});
 
   @override
-  bool operator ==(other) =>
-      other is PackageKitPackageEvent &&
-      other.info == info &&
-      other.packageId == packageId &&
-      other.summary == summary;
+  bool operator ==(other) {
+    if (identical(this, other)) return true;
+
+    return other is PackageKitPackageEvent &&
+        other.info == info &&
+        other.packageId == packageId &&
+        other.summary == summary;
+  }
 
   @override
   int get hashCode => Object.hash(info, packageId, summary);
@@ -602,11 +625,14 @@ class PackageKitRepositoryDetailEvent extends PackageKitEvent {
       {required this.repoId, required this.description, required this.enabled});
 
   @override
-  bool operator ==(other) =>
-      other is PackageKitRepositoryDetailEvent &&
-      other.repoId == repoId &&
-      other.description == description &&
-      other.enabled == enabled;
+  bool operator ==(other) {
+    if (identical(this, other)) return true;
+
+    return other is PackageKitRepositoryDetailEvent &&
+        other.repoId == repoId &&
+        other.description == description &&
+        other.enabled == enabled;
+  }
 
   @override
   int get hashCode => Object.hash(repoId, description, enabled);
@@ -628,10 +654,13 @@ class PackageKitRequireRestartEvent extends PackageKitEvent {
       {required this.type, required this.packageId});
 
   @override
-  bool operator ==(other) =>
-      other is PackageKitRequireRestartEvent &&
-      other.type == type &&
-      other.packageId == packageId;
+  bool operator ==(other) {
+    if (identical(this, other)) return true;
+
+    return other is PackageKitRequireRestartEvent &&
+        other.type == type &&
+        other.packageId == packageId;
+  }
 
   @override
   int get hashCode => Object.hash(type, packageId);
@@ -1069,18 +1098,4 @@ class PackageKitClient {
     _properties.addAll(properties);
     _propertiesChangedController.add(properties.keys.toList());
   }
-}
-
-bool _listsEqual<T>(List<T> a, List<T> b) {
-  if (a.length != b.length) {
-    return false;
-  }
-
-  for (var i = 0; i < a.length; i++) {
-    if (a[i] != b[i]) {
-      return false;
-    }
-  }
-
-  return true;
 }
