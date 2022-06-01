@@ -852,6 +852,21 @@ class PackageKitTransaction {
         replySignature: DBusSignature(''));
   }
 
+  /// Install local package files onto the local system.
+  /// The files are specified with their full ppaths].
+  /// This method generates a [PackageKitPackageEvent] event for each package that is installed.
+  Future<void> installFiles(Iterable<String> paths,
+      {Set<PackageKitTransactionFlag> transactionFlags = const {}}) async {
+    await _object.callMethod(
+        _packageKitTransactionInterfaceName,
+        'InstallFiles',
+        [
+          DBusUint64(_encodeTransactionFlags(transactionFlags)),
+          DBusArray.string(paths)
+        ],
+        replySignature: DBusSignature(''));
+  }
+
   /// Install new packages with [packageIds] on the local system.
   /// This method generates a [PackageKitPackageEvent] event for each package that is installed.
   Future<void> installPackages(Iterable<PackageKitPackageId> packageIds,

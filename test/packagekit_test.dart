@@ -141,6 +141,23 @@ class MockPackageKitTransaction extends DBusObject {
         }
         emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
+      case 'InstallFiles':
+        var paths = (methodCall.values[1] as DBusArray).mapString();
+        for (var path in paths) {
+          var package = server.findAvailableFile(path);
+          if (package == null) {
+            emitFinished(exitFailed, server.transactionRuntime);
+            return DBusMethodSuccessResponse();
+          }
+          var id = '${package.name};${package.version};${package.arch};+manual';
+          emitPackage(infoPreparing, id, package.summary);
+          emitPackage(infoDecompressing, id, package.summary);
+          emitPackage(infoFinished, id, package.summary);
+          emitPackage(infoInstalling, id, package.summary);
+          emitPackage(infoFinished, id, package.summary);
+        }
+        emitFinished(exitSuccess, server.transactionRuntime);
+        return DBusMethodSuccessResponse();
       case 'InstallPackages':
         var packageIds = (methodCall.values[1] as DBusArray)
             .children
@@ -452,6 +469,7 @@ class MockPackageKitServer extends DBusClient {
   final List<MockRepository> repositories;
   final Map<String, List<MockPackage>> availablePackages;
   final List<MockPackage> installedPackages;
+  final Map<String, MockPackage> availableFiles;
 
   String? lastLocale;
   bool? lastBackground;
@@ -476,7 +494,8 @@ class MockPackageKitServer extends DBusClient {
       this.transactionRuntime = 0,
       this.repositories = const [],
       this.availablePackages = const {},
-      this.installedPackages = const []})
+      this.installedPackages = const [],
+      this.availableFiles = const {}})
       : super(clientAddress);
 
   MockPackage? findInstalled(String packageId) {
@@ -514,6 +533,10 @@ class MockPackageKitServer extends DBusClient {
       }
     }
     return null;
+  }
+
+  MockPackage? findAvailableFile(String path) {
+    return availableFiles[path];
   }
 
   Future<void> start() async {
@@ -1233,6 +1256,56 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.failed, runtime: 1234)
         ]));
     await transaction.installPackages([packageId]);
+  });
+
+  test('install files', () async {
+    var server = DBusServer();
+    addTearDown(() async => await server.close());
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var summary = 'example package based on GNU hello';
+    var packagekit = MockPackageKitServer(clientAddress,
+        transactionRuntime: 1234,
+        availableFiles: {
+          '/hello_2.1.0-2-ubuntu4_arm64.deb':
+              MockPackage('hello', '2.10', arch: 'arm64', summary: summary)
+        });
+    addTearDown(() async => await packagekit.close());
+    await packagekit.start();
+
+    var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
+    await client.connect();
+
+    var transaction = await client.createTransaction();
+    var packageId = PackageKitPackageId.fromString('hello;2.10;arm64;+manual');
+    expect(
+        transaction.events,
+        emitsInOrder([
+          PackageKitPackageEvent(
+              info: PackageKitInfo.preparing,
+              packageId: packageId,
+              summary: summary),
+          PackageKitPackageEvent(
+              info: PackageKitInfo.decompressing,
+              packageId: packageId,
+              summary: summary),
+          PackageKitPackageEvent(
+              info: PackageKitInfo.finished,
+              packageId: packageId,
+              summary: summary),
+          PackageKitPackageEvent(
+              info: PackageKitInfo.installing,
+              packageId: packageId,
+              summary: summary),
+          PackageKitPackageEvent(
+              info: PackageKitInfo.finished,
+              packageId: packageId,
+              summary: summary),
+          PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
+        ]));
+    await transaction.installFiles(['/hello_2.1.0-2-ubuntu4_arm64.deb']);
   });
 
   test('remove', () async {
