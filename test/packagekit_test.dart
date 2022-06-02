@@ -143,6 +143,20 @@ class MockPackageKitTransaction extends DBusObject {
         }
         emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
+      case 'GetFilesLocal':
+        var paths = (methodCall.values[0] as DBusArray).mapString();
+        for (var path in paths) {
+          var package = server.findAvailableFile(path);
+          if (package == null) {
+            emitErrorCode(errorPackageNotFound, 'Package not found');
+            emitFinished(exitFailed, server.transactionRuntime);
+            return DBusMethodSuccessResponse();
+          }
+          var id = '${package.name};${package.version};${package.arch};+manual';
+          emitFiles(id, package.fileList);
+        }
+        emitFinished(exitSuccess, server.transactionRuntime);
+        return DBusMethodSuccessResponse();
       case 'GetPackages':
         var filter = (methodCall.values[0] as DBusUint64).value;
         for (var p in server.installedPackages) {
@@ -1544,6 +1558,39 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
         ]));
     await transaction.getFiles([packageId]);
+  });
+
+  test('get files local', () async {
+    var server = DBusServer();
+    addTearDown(() async => await server.close());
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var packagekit = MockPackageKitServer(clientAddress,
+        transactionRuntime: 1234,
+        availableFiles: {
+          '/hello_2.1.0-2-ubuntu4_arm64.deb': MockPackage('hello', '2.10',
+              arch: 'arm64',
+              fileList: ['/usr/bin/hello', '/usr/share/man/man1/hello.1.gz'])
+        });
+    addTearDown(() async => await packagekit.close());
+    await packagekit.start();
+
+    var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
+    await client.connect();
+
+    var transaction = await client.createTransaction();
+    var packageId = PackageKitPackageId.fromString('hello;2.10;arm64;+manual');
+    expect(
+        transaction.events,
+        emitsInOrder([
+          PackageKitFilesEvent(
+              packageId: packageId,
+              fileList: ['/usr/bin/hello', '/usr/share/man/man1/hello.1.gz']),
+          PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
+        ]));
+    await transaction.getFilesLocal(['/hello_2.1.0-2-ubuntu4_arm64.deb']);
   });
 
   test('get repository list', () async {

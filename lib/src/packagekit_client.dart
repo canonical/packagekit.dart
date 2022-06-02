@@ -919,6 +919,15 @@ class PackageKitTransaction {
         replySignature: DBusSignature(''));
   }
 
+  /// Gets the details for local package files.
+  /// The files are specified with their full [paths].
+  /// This method generates a [PackageKitFilesEvent] event for each file in these packages.
+  Future<void> getFilesLocal(Iterable<String> paths) async {
+    await _object.callMethod(_packageKitTransactionInterfaceName,
+        'GetFilesLocal', [DBusArray.string(paths)],
+        replySignature: DBusSignature(''));
+  }
+
   /// Gets all the available and installed packages.
   /// This method generates a [PackageKitPackageEvent] event for each package.
   Future<void> getPackages({Set<PackageKitFilter> filter = const {}}) async {
