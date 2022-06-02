@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.2
+
+* Add PackageKitClient.propertiesChanged stream.
+* Add PackageKitClient.installFiles/getDetails/getDetailsLocal/getFilesLocal
+
 ## 0.2.1
 
 * Added documentation.
