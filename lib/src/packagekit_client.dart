@@ -190,6 +190,12 @@ enum PackageKitGroup {
   newest
 }
 
+PackageKitGroup _decodeGroup(int value) {
+  return value >= 0 && value < PackageKitGroup.values.length
+      ? PackageKitGroup.values[value]
+      : PackageKitGroup.unknown;
+}
+
 Set<PackageKitGroup> _decodeGroups(int mask) {
   var groups = <PackageKitGroup>{};
   for (var value in PackageKitGroup.values) {
@@ -420,6 +426,61 @@ class PackageKitUnknownEvent extends PackageKitEvent {
 
   @override
   String toString() => "$runtimeType('$name', $values)";
+}
+
+/// An event from the backend to give details about a package.
+class PackageKitDetailsEvent extends PackageKitEvent {
+  /// The ID of the package this event relates to.
+  final PackageKitPackageId packageId;
+
+  /// The group this package belongs to.
+  final PackageKitGroup group;
+
+  /// The one line package summary, e.g. "Clipart for OpenOffice"
+  final String summary;
+
+  ///The multi-line package description in markdown syntax.
+  final String description;
+
+  /// The upstream project homepage.
+  final String url;
+
+  /// The license string, e.g. GPLv2+
+  final String license;
+
+  /// The size of the package in bytes.
+  final int size;
+
+  PackageKitDetailsEvent(
+      {required this.packageId,
+      this.group = PackageKitGroup.unknown,
+      this.summary = '',
+      this.description = '',
+      this.url = '',
+      this.license = '',
+      this.size = 0});
+
+  @override
+  bool operator ==(other) {
+    if (identical(this, other)) return true;
+
+    return other is PackageKitDetailsEvent &&
+        other.packageId == packageId &&
+        other.group == group &&
+        other.summary == summary &&
+        other.description == description &&
+        other.url == url &&
+        other.license == license &&
+        other.size == size;
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(packageId, group, summary, description, url, license, size);
+
+  @override
+  String toString() =>
+      '$runtimeType(packageId: $packageId, group: $group, summary: $summary, description: $description, url: $url, license: $license, size: $size)';
 }
 
 /// And event when a [PackageKitTransaction] is complete.
@@ -688,6 +749,20 @@ class PackageKitTransaction {
             path: objectPath)
         .map((signal) {
       switch (signal.name) {
+        case 'Details':
+          if (signal.signature != DBusSignature('a{sv}')) {
+            throw 'Invalid ${signal.name} signal';
+          }
+          var data = (signal.values[0] as DBusDict).mapStringVariant();
+          return PackageKitDetailsEvent(
+              packageId: PackageKitPackageId.fromString(
+                  (data['package-id'] as DBusString?)?.value ?? ''),
+              group: _decodeGroup((data['group'] as DBusUint32?)?.value ?? 0),
+              summary: (data['summary'] as DBusString?)?.value ?? '',
+              description: (data['description'] as DBusString?)?.value ?? '',
+              url: (data['url'] as DBusString?)?.value ?? '',
+              license: (data['license'] as DBusString?)?.value ?? '',
+              size: (data['size'] as DBusUint64?)?.value ?? 0);
         case 'Destroy':
           if (signal.signature != DBusSignature('')) {
             throw 'Invalid ${signal.name} signal';
@@ -805,6 +880,23 @@ class PackageKitTransaction {
         replySignature: DBusSignature(''));
   }
 
+  /// Gets the details for packages with [packageIds].
+  /// This method generates a [PackageKitDetailsEvent] event for each package.
+  Future<void> getDetails(Iterable<PackageKitPackageId> packageIds) async {
+    await _object.callMethod(_packageKitTransactionInterfaceName, 'GetDetails',
+        [DBusArray.string(packageIds.map((id) => id.toString()))],
+        replySignature: DBusSignature(''));
+  }
+
+  /// Gets the details for local package files.
+  /// The files are specified with their full [paths].
+  /// This method generates a [PackageKitDetailsEvent] event for each package.
+  Future<void> getDetailsLocal(Iterable<String> paths) async {
+    await _object.callMethod(_packageKitTransactionInterfaceName,
+        'GetDetailsLocal', [DBusArray.string(paths)],
+        replySignature: DBusSignature(''));
+  }
+
   /// Downloads the packages with [packageIds] into a temporary directory.
   /// This method generates a [PackageKitFilesEvent] event for each package file that is downloaded.
   Future<void> downloadPackages(Iterable<PackageKitPackageId> packageIds,
@@ -853,7 +945,7 @@ class PackageKitTransaction {
   }
 
   /// Install local package files onto the local system.
-  /// The files are specified with their full ppaths].
+  /// The files are specified with their full [paths].
   /// This method generates a [PackageKitPackageEvent] event for each package that is installed.
   Future<void> installFiles(Iterable<String> paths,
       {Set<PackageKitTransactionFlag> transactionFlags = const {}}) async {

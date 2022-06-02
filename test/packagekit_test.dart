@@ -89,6 +89,45 @@ class MockPackageKitTransaction extends DBusObject {
         }
         emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
+      case 'GetDetails':
+        var packageIds = (methodCall.values[0] as DBusArray).mapString();
+        for (var id in packageIds) {
+          var package = server.findAvailable(id);
+          if (package == null) {
+            emitErrorCode(errorPackageNotFound, 'Package not found');
+            emitFinished(exitFailed, server.transactionRuntime);
+            return DBusMethodSuccessResponse();
+          }
+          emitDetails(id,
+              group: package.group,
+              summary: package.summary,
+              description: package.description,
+              url: package.url,
+              license: package.license,
+              size: package.size);
+        }
+        emitFinished(exitSuccess, server.transactionRuntime);
+        return DBusMethodSuccessResponse();
+      case 'GetDetailsLocal':
+        var paths = (methodCall.values[0] as DBusArray).mapString();
+        for (var path in paths) {
+          var package = server.findAvailableFile(path);
+          if (package == null) {
+            emitErrorCode(errorPackageNotFound, 'Package not found');
+            emitFinished(exitFailed, server.transactionRuntime);
+            return DBusMethodSuccessResponse();
+          }
+          var id = '${package.name};${package.version};${package.arch};+manual';
+          emitDetails(id,
+              group: package.group,
+              summary: package.summary,
+              description: package.description,
+              url: package.url,
+              license: package.license,
+              size: package.size);
+        }
+        emitFinished(exitSuccess, server.transactionRuntime);
+        return DBusMethodSuccessResponse();
       case 'GetFiles':
         var packageIds = (methodCall.values[0] as DBusArray)
             .children
@@ -333,6 +372,25 @@ class MockPackageKitTransaction extends DBusObject {
     }
   }
 
+  void emitDetails(String packageId,
+      {int group = 0,
+      String summary = '',
+      String description = '',
+      String url = '',
+      String license = '',
+      size = 0}) {
+    var data = DBusDict.stringVariant({
+      'package-id': DBusString(packageId),
+      'group': DBusUint32(group),
+      'summary': DBusString(summary),
+      'description': DBusString(description),
+      'url': DBusString(url),
+      'license': DBusString(license),
+      'size': DBusUint64(size)
+    });
+    emitSignal('org.freedesktop.PackageKit.Transaction', 'Details', [data]);
+  }
+
   void emitErrorCode(int code, String details) {
     emitSignal('org.freedesktop.PackageKit.Transaction', 'ErrorCode',
         [DBusUint32(code), DBusString(details)]);
@@ -437,13 +495,23 @@ class MockPackage {
   final String name;
   final String version;
   final String arch;
+  final int group;
   final String summary;
+  final String description;
+  final String url;
+  final String license;
+  final int size;
   final List<String> fileList;
   final List<String> dependsOn;
 
   const MockPackage(this.name, this.version,
       {this.arch = '',
+      this.group = 0,
       this.summary = '',
+      this.description = '',
+      this.url = '',
+      this.license = '',
+      this.size = 0,
       this.fileList = const [],
       this.dependsOn = const []});
 }
@@ -919,6 +987,95 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
         ]));
     await transaction.resolve(['hello']);
+  });
+
+  test('get details', () async {
+    var server = DBusServer();
+    addTearDown(() async => await server.close());
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var packagekit = MockPackageKitServer(clientAddress,
+        transactionRuntime: 1234,
+        availablePackages: {
+          'ubuntu-hirsute-main': [
+            MockPackage('hello', '2.10',
+                arch: 'arm64',
+                summary: 'example package based on GNU hello',
+                group: 22,
+                description: 'description of hello',
+                url: 'http://www.gnu.org/software/hello/',
+                license: 'GPLv2+',
+                size: 110592)
+          ]
+        });
+    addTearDown(() async => await packagekit.close());
+    await packagekit.start();
+
+    var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
+    await client.connect();
+
+    var transaction = await client.createTransaction();
+    var packageId =
+        PackageKitPackageId.fromString('hello;2.10;arm64;ubuntu-hirsute-main');
+    expect(
+        transaction.events,
+        emitsInOrder([
+          PackageKitDetailsEvent(
+              packageId: packageId,
+              group: PackageKitGroup.programming,
+              summary: 'example package based on GNU hello',
+              description: 'description of hello',
+              url: 'http://www.gnu.org/software/hello/',
+              license: 'GPLv2+',
+              size: 110592),
+          PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
+        ]));
+    await transaction.getDetails([packageId]);
+  });
+
+  test('get details local', () async {
+    var server = DBusServer();
+    addTearDown(() async => await server.close());
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var packagekit = MockPackageKitServer(clientAddress,
+        transactionRuntime: 1234,
+        availableFiles: {
+          '/hello_2.1.0-2-ubuntu4_arm64.deb': MockPackage('hello', '2.10',
+              arch: 'arm64',
+              summary: 'example package based on GNU hello',
+              group: 22,
+              description: 'description of hello',
+              url: 'http://www.gnu.org/software/hello/',
+              license: 'GPLv2+',
+              size: 110592)
+        });
+    addTearDown(() async => await packagekit.close());
+    await packagekit.start();
+
+    var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
+    await client.connect();
+
+    var transaction = await client.createTransaction();
+    var packageId = PackageKitPackageId.fromString('hello;2.10;arm64;+manual');
+    expect(
+        transaction.events,
+        emitsInOrder([
+          PackageKitDetailsEvent(
+              packageId: packageId,
+              group: PackageKitGroup.programming,
+              summary: 'example package based on GNU hello',
+              description: 'description of hello',
+              url: 'http://www.gnu.org/software/hello/',
+              license: 'GPLv2+',
+              size: 110592),
+          PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
+        ]));
+    await transaction.getDetailsLocal(['/hello_2.1.0-2-ubuntu4_arm64.deb']);
   });
 
   test('search names', () async {
