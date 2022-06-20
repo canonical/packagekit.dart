@@ -945,6 +945,31 @@ class PackageKitTransaction {
         replySignature: DBusSignature(''));
   }
 
+  /// Enable or disable the repository with the given [id].
+  Future<void> setRepositoryEnabled(String id, bool enabled) async {
+    await _object.callMethod(_packageKitTransactionInterfaceName, 'RepoEnable',
+        [DBusString(id), DBusBoolean(enabled)],
+        replySignature: DBusSignature(''));
+  }
+
+  /// Set a [parameter] on the repository with the given [id].
+  Future<void> setRepositoryData(
+      String id, String parameter, String value) async {
+    await _object.callMethod(_packageKitTransactionInterfaceName, 'RepoSetData',
+        [DBusString(id), DBusString(parameter), DBusString(value)],
+        replySignature: DBusSignature(''));
+  }
+
+  /// Remove the repository with the given [id].
+  /// If [autoremovePackages] is true, then packages installed from this repository are automatically removed.
+  Future<void> removeRepository(String id,
+      {bool autoremovePackages = false}) async {
+    var flags = 0;
+    await _object.callMethod(_packageKitTransactionInterfaceName, 'RepoRemove',
+        [DBusString(id), DBusUint64(flags), DBusBoolean(autoremovePackages)],
+        replySignature: DBusSignature(''));
+  }
+
   /// Gets all the installed packages that can be upgraded.
   /// This method generates a [PackageKitPackageEvent] event for each package.
   Future<void> getUpdates({Set<PackageKitFilter> filter = const {}}) async {

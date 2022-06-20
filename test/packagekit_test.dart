@@ -1,10 +1,12 @@
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:dbus/dbus.dart';
 import 'package:test/test.dart';
 import 'package:packagekit/packagekit.dart';
 
 const int errorPackageNotFound = 8;
+const int errorRepositoryNotFound = 19;
 
 const int exitSuccess = 1;
 const int exitFailed = 2;
@@ -177,6 +179,45 @@ class MockPackageKitTransaction extends DBusObject {
       case 'GetRepoList':
         for (var repo in server.repositories) {
           emitRepoDetail(repo.id, repo.description, repo.enabled);
+        }
+        emitFinished(exitSuccess, server.transactionRuntime);
+        return DBusMethodSuccessResponse();
+      case 'RepoEnable':
+        var id = (methodCall.values[0] as DBusString).value;
+        var enabled = (methodCall.values[1] as DBusBoolean).value;
+        var repo = server.findRepository(id);
+        if (repo == null) {
+          emitErrorCode(errorRepositoryNotFound, 'Repository not found');
+          emitFinished(exitFailed, server.transactionRuntime);
+          return DBusMethodSuccessResponse();
+        }
+        repo.enabled = enabled;
+        emitFinished(exitSuccess, server.transactionRuntime);
+        return DBusMethodSuccessResponse();
+      case 'RepoSetData':
+        var id = (methodCall.values[0] as DBusString).value;
+        var parameter = (methodCall.values[1] as DBusString).value;
+        var value = (methodCall.values[2] as DBusString).value;
+        var repo = server.findRepository(id);
+        if (repo == null) {
+          emitErrorCode(errorRepositoryNotFound, 'Repository not found');
+          emitFinished(exitFailed, server.transactionRuntime);
+          return DBusMethodSuccessResponse();
+        }
+        repo.data[parameter] = value;
+        emitFinished(exitSuccess, server.transactionRuntime);
+        return DBusMethodSuccessResponse();
+      case 'RepoRemove':
+        var id = (methodCall.values[0] as DBusString).value;
+        //var flags = (methodCall.values[1] as DBusUint64).value;
+        var autoremovePackages = (methodCall.values[2] as DBusBoolean).value;
+        if (!server.removeRepository(id)) {
+          emitErrorCode(errorRepositoryNotFound, 'Repository not found');
+          emitFinished(exitFailed, server.transactionRuntime);
+          return DBusMethodSuccessResponse();
+        }
+        if (autoremovePackages) {
+          server.repositoriesRemovedPackges.add(id);
         }
         emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
@@ -500,9 +541,25 @@ class MockPackageKitRoot extends DBusObject {
 class MockRepository {
   final String id;
   final String description;
-  final bool enabled;
+  bool enabled;
+  final data = <String, String>{};
 
-  const MockRepository(this.id, this.description, this.enabled);
+  MockRepository(this.id, {this.description = '', this.enabled = true});
+
+  @override
+  bool operator ==(other) {
+    if (identical(this, other)) return true;
+    final collectionEquals = const DeepCollectionEquality().equals;
+
+    return other is MockRepository &&
+        other.id == id &&
+        other.description == description &&
+        other.enabled == enabled &&
+        collectionEquals(other.data, data);
+  }
+
+  @override
+  int get hashCode => Object.hash(id, description, enabled, data);
 }
 
 class MockPackage {
@@ -558,6 +615,7 @@ class MockPackageKitServer extends DBusClient {
   bool? lastInteractive;
   bool? lastIdle;
   int? lastCacheAge;
+  var repositoriesRemovedPackges = <String>[];
 
   MockPackageKitServer(DBusAddress clientAddress,
       {this.backendAuthor = '',
@@ -619,6 +677,24 @@ class MockPackageKitServer extends DBusClient {
 
   MockPackage? findAvailableFile(String path) {
     return availableFiles[path];
+  }
+
+  MockRepository? findRepository(String id) {
+    for (var repo in repositories) {
+      if (repo.id == id) {
+        return repo;
+      }
+    }
+    return null;
+  }
+
+  bool removeRepository(String id) {
+    var repo = findRepository(id);
+    if (repo == null) {
+      return false;
+    }
+    repositories.remove(repo);
+    return true;
   }
 
   Future<void> start() async {
@@ -1602,9 +1678,11 @@ void main() {
     var packagekit = MockPackageKitServer(clientAddress,
         transactionRuntime: 1234,
         repositories: [
-          MockRepository('enabled-repo1', 'Main', true),
-          MockRepository('enabled-repo2', 'Updates', true),
-          MockRepository('disabled-repo', 'Universe', false)
+          MockRepository('enabled-repo1', description: 'Main', enabled: true),
+          MockRepository('enabled-repo2',
+              description: 'Updates', enabled: true),
+          MockRepository('disabled-repo',
+              description: 'Universe', enabled: false)
         ]);
     addTearDown(() async => await packagekit.close());
     await packagekit.start();
@@ -1628,6 +1706,93 @@ void main() {
     await transaction.getRepositoryList();
   });
 
+  test('enable repository', () async {
+    var server = DBusServer();
+    addTearDown(() async => await server.close());
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var repo = MockRepository('repo1', enabled: false);
+    var packagekit = MockPackageKitServer(clientAddress,
+        transactionRuntime: 1234, repositories: [repo]);
+    addTearDown(() async => await packagekit.close());
+    await packagekit.start();
+
+    var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
+    await client.connect();
+
+    var transaction = await client.createTransaction();
+    expect(
+        transaction.events,
+        emitsInOrder([
+          PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
+        ]));
+    await transaction.setRepositoryEnabled('repo1', true);
+    expect(repo.enabled, isTrue);
+  });
+
+  test('set repository data', () async {
+    var server = DBusServer();
+    addTearDown(() async => await server.close());
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var repo = MockRepository('repo1', enabled: false);
+    var packagekit = MockPackageKitServer(clientAddress,
+        transactionRuntime: 1234, repositories: [repo]);
+    addTearDown(() async => await packagekit.close());
+    await packagekit.start();
+
+    var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
+    await client.connect();
+
+    var transaction = await client.createTransaction();
+    expect(
+        transaction.events,
+        emitsInOrder([
+          PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
+        ]));
+    await transaction.setRepositoryData('repo1', 'name', 'value');
+    expect(repo.data, equals({'name': 'value'}));
+  });
+
+  test('remove repository', () async {
+    var server = DBusServer();
+    addTearDown(() async => await server.close());
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var packagekit = MockPackageKitServer(clientAddress,
+        transactionRuntime: 1234,
+        repositories: [
+          MockRepository('repo1'),
+          MockRepository('repo2'),
+          MockRepository('repo3')
+        ]);
+    addTearDown(() async => await packagekit.close());
+    await packagekit.start();
+
+    var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
+    await client.connect();
+
+    var transaction = await client.createTransaction();
+    expect(
+        transaction.events,
+        emitsInOrder([
+          PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
+        ]));
+    await transaction.removeRepository('repo2');
+    expect(packagekit.repositories,
+        equals([MockRepository('repo1'), MockRepository('repo3')]));
+
+    await transaction.removeRepository('repo1', autoremovePackages: true);
+    expect(packagekit.repositories, equals([MockRepository('repo3')]));
+    expect(packagekit.repositoriesRemovedPackges, equals(['repo1']));
+  });
+
   test('refresh cache', () async {
     var server = DBusServer();
     addTearDown(() async => await server.close());
@@ -1637,8 +1802,9 @@ void main() {
     var packagekit = MockPackageKitServer(clientAddress,
         transactionRuntime: 1234,
         repositories: [
-          MockRepository('enabled-repo', 'Main', true),
-          MockRepository('disabled-repo', 'Universe', false)
+          MockRepository('enabled-repo', description: 'Main', enabled: true),
+          MockRepository('disabled-repo',
+              description: 'Universe', enabled: false)
         ]);
     addTearDown(() async => await packagekit.close());
     await packagekit.start();
