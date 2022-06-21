@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.3
+
+* Add PackageKitClient.setRepositoryEnabled/.setRepositoryData/.removeRepository.
+
 ## 0.2.2
 
 * Add PackageKitClient.propertiesChanged stream.
