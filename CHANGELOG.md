@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.4
+
+* Added PackageKitTransaction.getUpdateDetail.
+
 ## 0.2.3
 
 * Add PackageKitClient.setRepositoryEnabled/.setRepositoryData/.removeRepository.
