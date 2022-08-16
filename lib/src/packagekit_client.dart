@@ -753,16 +753,16 @@ class PackageKitTransaction {
           if (signal.signature != DBusSignature('a{sv}')) {
             throw 'Invalid ${signal.name} signal';
           }
-          var data = (signal.values[0] as DBusDict).mapStringVariant();
+          var data = signal.values[0].asStringVariantDict();
           return PackageKitDetailsEvent(
               packageId: PackageKitPackageId.fromString(
-                  (data['package-id'] as DBusString?)?.value ?? ''),
-              group: _decodeGroup((data['group'] as DBusUint32?)?.value ?? 0),
-              summary: (data['summary'] as DBusString?)?.value ?? '',
-              description: (data['description'] as DBusString?)?.value ?? '',
-              url: (data['url'] as DBusString?)?.value ?? '',
-              license: (data['license'] as DBusString?)?.value ?? '',
-              size: (data['size'] as DBusUint64?)?.value ?? 0);
+                  data['package-id']?.asString() ?? ''),
+              group: _decodeGroup(data['group']?.asUint32() ?? 0),
+              summary: data['summary']?.asString() ?? '',
+              description: data['description']?.asString() ?? '',
+              url: data['url']?.asString() ?? '',
+              license: data['license']?.asString() ?? '',
+              size: data['size']?.asUint64() ?? 0);
         case 'Destroy':
           if (signal.signature != DBusSignature('')) {
             throw 'Invalid ${signal.name} signal';
@@ -772,87 +772,84 @@ class PackageKitTransaction {
           if (signal.signature != DBusSignature('us')) {
             throw 'Invalid ${signal.name} signal';
           }
-          var codeValue = (signal.values[0] as DBusUint32).value;
+          var codeValue = signal.values[0].asUint32();
           return PackageKitErrorCodeEvent(
               code: codeValue < PackageKitError.values.length
                   ? PackageKitError.values[codeValue]
                   : PackageKitError.unknown,
-              details: (signal.values[1] as DBusString).value);
+              details: signal.values[1].asString());
         case 'Files':
           if (signal.signature != DBusSignature('sas')) {
             throw 'Invalid ${signal.name} signal';
           }
           return PackageKitFilesEvent(
-              packageId: PackageKitPackageId.fromString(
-                  (signal.values[0] as DBusString).value),
-              fileList: (signal.values[1] as DBusArray)
-                  .children
-                  .map((value) => (value as DBusString).value)
-                  .toList());
+              packageId:
+                  PackageKitPackageId.fromString(signal.values[0].asString()),
+              fileList: signal.values[1].asStringArray().toList());
         case 'Finished':
           if (signal.signature != DBusSignature('uu')) {
             throw 'Invalid ${signal.name} signal';
           }
-          var exitValue = (signal.values[0] as DBusUint32).value;
+          var exitValue = signal.values[0].asUint32();
           return PackageKitFinishedEvent(
               exit: exitValue < PackageKitExit.values.length
                   ? PackageKitExit.values[exitValue]
                   : PackageKitExit.unknown,
-              runtime: (signal.values[1] as DBusUint32).value);
+              runtime: signal.values[1].asUint32());
         case 'ItemProgress':
           if (signal.signature != DBusSignature('suu')) {
             throw 'Invalid ${signal.name} signal';
           }
-          var statusValue = (signal.values[1] as DBusUint32).value;
+          var statusValue = signal.values[1].asUint32();
           return PackageKitItemProgressEvent(
-              packageId: PackageKitPackageId.fromString(
-                  (signal.values[0] as DBusString).value),
+              packageId:
+                  PackageKitPackageId.fromString(signal.values[0].asString()),
               status: statusValue < PackageKitStatus.values.length
                   ? PackageKitStatus.values[statusValue]
                   : PackageKitStatus.unknown,
-              percentage: (signal.values[2] as DBusUint32).value);
+              percentage: signal.values[2].asUint32());
         case 'MediaChangeRequired':
           if (signal.signature != DBusSignature('uss')) {
             throw 'Invalid ${signal.name} signal';
           }
-          var mediaTypeValue = (signal.values[0] as DBusUint32).value;
+          var mediaTypeValue = signal.values[0].asUint32();
           return PackageKitMediaChangeRequiredEvent(
               mediaType: mediaTypeValue < PackageKitMediaType.values.length
                   ? PackageKitMediaType.values[mediaTypeValue]
                   : PackageKitMediaType.unknown,
-              mediaId: (signal.values[1] as DBusString).value,
-              mediaText: (signal.values[2] as DBusString).value);
+              mediaId: signal.values[1].asString(),
+              mediaText: signal.values[2].asString());
         case 'Package':
           if (signal.signature != DBusSignature('uss')) {
             throw 'Invalid ${signal.name} signal';
           }
-          var infoValue = (signal.values[0] as DBusUint32).value;
+          var infoValue = signal.values[0].asUint32();
           return PackageKitPackageEvent(
               info: infoValue < PackageKitInfo.values.length
                   ? PackageKitInfo.values[infoValue]
                   : PackageKitInfo.unknown,
-              packageId: PackageKitPackageId.fromString(
-                  (signal.values[1] as DBusString).value),
-              summary: (signal.values[2] as DBusString).value);
+              packageId:
+                  PackageKitPackageId.fromString(signal.values[1].asString()),
+              summary: signal.values[2].asString());
         case 'RepoDetail':
           if (signal.signature != DBusSignature('ssb')) {
             throw 'Invalid ${signal.name} signal';
           }
           return PackageKitRepositoryDetailEvent(
-              repoId: (signal.values[0] as DBusString).value,
-              description: (signal.values[1] as DBusString).value,
-              enabled: (signal.values[2] as DBusBoolean).value);
+              repoId: signal.values[0].asString(),
+              description: signal.values[1].asString(),
+              enabled: signal.values[2].asBoolean());
         case 'RequireRestart':
           if (signal.signature != DBusSignature('us')) {
             throw 'Invalid ${signal.name} signal';
           }
-          var typeValue = (signal.values[0] as DBusUint32).value;
+          var typeValue = signal.values[0].asUint32();
           return PackageKitRequireRestartEvent(
               type: typeValue < PackageKitRestart.values.length
                   ? PackageKitRestart.values[typeValue]
                   : PackageKitRestart.unknown,
-              packageId: PackageKitPackageId.fromString(
-                  (signal.values[1] as DBusString).value));
+              packageId:
+                  PackageKitPackageId.fromString(signal.values[1].asString()));
         default:
           return PackageKitUnknownEvent(signal.name, signal.values);
       }
@@ -1123,57 +1120,54 @@ class PackageKitClient {
   int cacheAge = 0xffffffff;
 
   ///  The backend author, e.g. "Joe Bloggs <joe@blogs.com>"
-  String get backendAuthor =>
-      (_properties['BackendAuthor'] as DBusString).value;
+  String get backendAuthor => _properties['BackendAuthor']?.asString() ?? '';
 
   /// The backend description, e.g. "Yellow Dog Update Modifier"
   String get backendDescription =>
-      (_properties['BackendDescription'] as DBusString).value;
+      _properties['BackendDescription']?.asString() ?? '';
 
   /// The backend name, e.g. "dnf"
-  String get backendName => (_properties['BackendName'] as DBusString).value;
+  String get backendName => _properties['BackendName']?.asString() ?? '';
 
   /// The distribution identification, in the distro;version;arch form e.g. "debian;squeeze/sid;x86_64"
-  String get distroId => (_properties['DistroId'] as DBusString).value;
+  String get distroId => _properties['DistroId']?.asString() ?? '';
 
   /// The filters the backend supports.
   Set<PackageKitFilter> get filters =>
-      _decodeFilters((_properties['Filters'] as DBusUint64).value);
+      _decodeFilters(_properties['Filters']?.asUint64() ?? 0);
 
   /// The groups the backend supports.
   Set<PackageKitGroup> get groups =>
-      _decodeGroups((_properties['Groups'] as DBusUint64).value);
+      _decodeGroups(_properties['Groups']?.asUint64() ?? 0);
 
   /// Set when the backend is locked and native tools would fail.
-  bool get locked => (_properties['Locked'] as DBusBoolean).value;
+  bool get locked => _properties['Locked']?.asBoolean() ?? false;
 
   /// The mime-types the backend supports, e.g. ['application/x-rpm', 'application/x-deb'].
-  List<String> get mimeTypes => (_properties['MimeTypes'] as DBusArray)
-      .children
-      .map((value) => (value as DBusString).value)
-      .toList();
+  List<String> get mimeTypes =>
+      _properties['MimeTypes']?.asStringArray().toList() ?? [];
 
   /// The roles the backend supports.
   Set<PackageKitRole> get roles =>
-      _decodeRoles((_properties['Roles'] as DBusUint64).value);
+      _decodeRoles(_properties['Roles']?.asUint64() ?? 0);
 
   /// The network state from the daemon. This is provided as some clients may not want
   /// to use NetworkManager if the system daemon is configured to use something else.
   PackageKitNetworkState get networkState {
-    var value = (_properties['NetworkState'] as DBusUint32).value;
+    var value = _properties['NetworkState']?.asUint32() ?? 0;
     return value < PackageKitNetworkState.values.length
         ? PackageKitNetworkState.values[value]
         : PackageKitNetworkState.unknown;
   }
 
   /// The major version number of the PackageKit daemon.
-  int get versionMajor => (_properties['VersionMajor'] as DBusUint32).value;
+  int get versionMajor => _properties['VersionMajor']?.asUint32() ?? 0;
 
   /// The minor version number of the PackageKit daemon.
-  int get versionMinor => (_properties['VersionMinor'] as DBusUint32).value;
+  int get versionMinor => _properties['VersionMinor']?.asUint32() ?? 0;
 
   /// The micro version number of the PackageKit daemon.
-  int get versionMicro => (_properties['VersionMicro'] as DBusUint32).value;
+  int get versionMicro => _properties['VersionMicro']?.asUint32() ?? 0;
 
   /// Stream of property names as they change.
   Stream<List<String>> get propertiesChanged =>
@@ -1209,7 +1203,7 @@ class PackageKitClient {
         _packageKitInterfaceName, 'CreateTransaction', [],
         replySignature: DBusSignature('o'));
     var transaction =
-        PackageKitTransaction(_bus, result.returnValues[0] as DBusObjectPath);
+        PackageKitTransaction(_bus, result.returnValues[0].asObjectPath());
 
     var hints = <String>[];
     if (locale != null) {
