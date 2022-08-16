@@ -46,10 +46,8 @@ class MockPackageKitTransaction extends DBusObject {
 
     switch (methodCall.name) {
       case 'DependsOn':
-        var packageIds = (methodCall.values[1] as DBusArray)
-            .children
-            .map((value) => (value as DBusString).value);
-        var recursive = (methodCall.values[2] as DBusBoolean).value;
+        var packageIds = methodCall.values[1].asStringArray();
+        var recursive = methodCall.values[2].asBoolean();
         void findDeps(MockPackage package) {
           for (var childPackageName in package.dependsOn) {
             var p = server.findInstalledByName(childPackageName);
@@ -74,9 +72,7 @@ class MockPackageKitTransaction extends DBusObject {
         emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'DownloadPackages':
-        var packageIds = (methodCall.values[1] as DBusArray)
-            .children
-            .map((value) => (value as DBusString).value);
+        var packageIds = methodCall.values[1].asStringArray();
         for (var id in packageIds) {
           var package = server.findAvailable(id);
           if (package == null) {
@@ -92,7 +88,7 @@ class MockPackageKitTransaction extends DBusObject {
         emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'GetDetails':
-        var packageIds = (methodCall.values[0] as DBusArray).mapString();
+        var packageIds = methodCall.values[0].asStringArray();
         for (var id in packageIds) {
           var package = server.findAvailable(id);
           if (package == null) {
@@ -111,7 +107,7 @@ class MockPackageKitTransaction extends DBusObject {
         emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'GetDetailsLocal':
-        var paths = (methodCall.values[0] as DBusArray).mapString();
+        var paths = methodCall.values[0].asStringArray();
         for (var path in paths) {
           var package = server.findAvailableFile(path);
           if (package == null) {
@@ -131,9 +127,7 @@ class MockPackageKitTransaction extends DBusObject {
         emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'GetFiles':
-        var packageIds = (methodCall.values[0] as DBusArray)
-            .children
-            .map((value) => (value as DBusString).value);
+        var packageIds = methodCall.values[0].asStringArray();
         for (var id in packageIds) {
           var package = server.findInstalled(id);
           if (package == null) {
@@ -146,7 +140,7 @@ class MockPackageKitTransaction extends DBusObject {
         emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'GetFilesLocal':
-        var paths = (methodCall.values[0] as DBusArray).mapString();
+        var paths = methodCall.values[0].asStringArray();
         for (var path in paths) {
           var package = server.findAvailableFile(path);
           if (package == null) {
@@ -160,7 +154,7 @@ class MockPackageKitTransaction extends DBusObject {
         emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'GetPackages':
-        var filter = (methodCall.values[0] as DBusUint64).value;
+        var filter = methodCall.values[0].asUint64();
         for (var p in server.installedPackages) {
           emitPackage(infoInstalled,
               '${p.name};${p.version};${p.arch};installed', p.summary);
@@ -183,8 +177,8 @@ class MockPackageKitTransaction extends DBusObject {
         emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'RepoEnable':
-        var id = (methodCall.values[0] as DBusString).value;
-        var enabled = (methodCall.values[1] as DBusBoolean).value;
+        var id = methodCall.values[0].asString();
+        var enabled = methodCall.values[1].asBoolean();
         var repo = server.findRepository(id);
         if (repo == null) {
           emitErrorCode(errorRepositoryNotFound, 'Repository not found');
@@ -195,9 +189,9 @@ class MockPackageKitTransaction extends DBusObject {
         emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'RepoSetData':
-        var id = (methodCall.values[0] as DBusString).value;
-        var parameter = (methodCall.values[1] as DBusString).value;
-        var value = (methodCall.values[2] as DBusString).value;
+        var id = methodCall.values[0].asString();
+        var parameter = methodCall.values[1].asString();
+        var value = methodCall.values[2].asString();
         var repo = server.findRepository(id);
         if (repo == null) {
           emitErrorCode(errorRepositoryNotFound, 'Repository not found');
@@ -208,9 +202,9 @@ class MockPackageKitTransaction extends DBusObject {
         emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'RepoRemove':
-        var id = (methodCall.values[0] as DBusString).value;
-        //var flags = (methodCall.values[1] as DBusUint64).value;
-        var autoremovePackages = (methodCall.values[2] as DBusBoolean).value;
+        var id = methodCall.values[0].asString();
+        //var flags = methodCall.values[1].asUint64();
+        var autoremovePackages = methodCall.values[2].asBoolean();
         if (!server.removeRepository(id)) {
           emitErrorCode(errorRepositoryNotFound, 'Repository not found');
           emitFinished(exitFailed, server.transactionRuntime);
@@ -236,7 +230,7 @@ class MockPackageKitTransaction extends DBusObject {
         emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'InstallFiles':
-        var paths = (methodCall.values[1] as DBusArray).mapString();
+        var paths = methodCall.values[1].asStringArray();
         for (var path in paths) {
           var package = server.findAvailableFile(path);
           if (package == null) {
@@ -253,9 +247,7 @@ class MockPackageKitTransaction extends DBusObject {
         emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'InstallPackages':
-        var packageIds = (methodCall.values[1] as DBusArray)
-            .children
-            .map((value) => (value as DBusString).value);
+        var packageIds = methodCall.values[1].asStringArray();
         for (var id in packageIds) {
           var package = server.findAvailable(id);
           if (package == null) {
@@ -285,9 +277,7 @@ class MockPackageKitTransaction extends DBusObject {
         emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'RemovePackages':
-        var packageIds = (methodCall.values[1] as DBusArray)
-            .children
-            .map((value) => (value as DBusString).value);
+        var packageIds = methodCall.values[1].asStringArray();
         for (var id in packageIds) {
           var package = server.findInstalled(id);
           if (package == null) {
@@ -303,9 +293,7 @@ class MockPackageKitTransaction extends DBusObject {
         emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'Resolve':
-        var packageNames = (methodCall.values[1] as DBusArray)
-            .children
-            .map((value) => (value as DBusString).value);
+        var packageNames = methodCall.values[1].asStringArray();
         for (var name in packageNames) {
           for (var p in server.installedPackages) {
             if (p.name == name) {
@@ -317,9 +305,7 @@ class MockPackageKitTransaction extends DBusObject {
         emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'SearchFiles':
-        var values = (methodCall.values[1] as DBusArray)
-            .children
-            .map((value) => (value as DBusString).value);
+        var values = methodCall.values[1].asStringArray();
         bool fileMatches(String path) {
           for (var value in values) {
             if (value.startsWith('/')) {
@@ -341,9 +327,7 @@ class MockPackageKitTransaction extends DBusObject {
         emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'SearchNames':
-        var values = (methodCall.values[1] as DBusArray)
-            .children
-            .map((value) => (value as DBusString).value);
+        var values = methodCall.values[1].asStringArray();
         bool nameMatches(String name) {
           for (var value in values) {
             if (!name.contains(value)) {
@@ -366,9 +350,7 @@ class MockPackageKitTransaction extends DBusObject {
         server.lastInteractive = null;
         server.lastIdle = null;
         server.lastCacheAge = null;
-        var hints = (methodCall.values[0] as DBusArray)
-            .children
-            .map((value) => (value as DBusString).value);
+        var hints = methodCall.values[0].asStringArray();
         for (var hint in hints) {
           var i = hint.indexOf('=');
           if (i < 0) {
@@ -397,9 +379,7 @@ class MockPackageKitTransaction extends DBusObject {
         emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
       case 'UpdatePackages':
-        var packageIds = (methodCall.values[1] as DBusArray)
-            .children
-            .map((value) => (value as DBusString).value);
+        var packageIds = methodCall.values[1].asStringArray();
         for (var id in packageIds) {
           var package = server.findAvailable(id);
           if (package == null) {
