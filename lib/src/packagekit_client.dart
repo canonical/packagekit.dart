@@ -9,6 +9,9 @@ const _packageKitInterfaceName = 'org.freedesktop.PackageKit';
 const _packageKitTransactionInterfaceName =
     'org.freedesktop.PackageKit.Transaction';
 
+DateTime? _decodeDateTime(String value) =>
+    value != '' ? DateTime.parse(value) : null;
+
 /// The type of distribution upgrade, as used in [PackageKitTransaction.upgradeSystem].
 enum PackageKitDistroUpgrade { unknown, stable, unstable }
 
@@ -301,6 +304,11 @@ enum PackageKitRestart {
   securitySystem
 }
 
+PackageKitRestart _decodeRestart(int value) =>
+    value < PackageKitRestart.values.length
+        ? PackageKitRestart.values[value]
+        : PackageKitRestart.unknown;
+
 /// Status of a [PackageKitItemProgressEvent].
 enum PackageKitStatus {
   unknown,
@@ -359,6 +367,14 @@ int _encodeTransactionFlags(Set<PackageKitTransactionFlag> flags) {
   }
   return value;
 }
+
+/// The state of an update.
+enum PackageKitUpdateState { unknown, stable, unstable, testing }
+
+PackageKitUpdateState _decodeUpdateState(int value) =>
+    value >= 0 && value < PackageKitUpdateState.values.length
+        ? PackageKitUpdateState.values[value]
+        : PackageKitUpdateState.unknown;
 
 /// An ID that uniquely identifies a package.
 class PackageKitPackageId {
@@ -730,6 +746,94 @@ class PackageKitRequireRestartEvent extends PackageKitEvent {
   String toString() => "$runtimeType(type: $type, packageId: '$packageId')";
 }
 
+/// An event from the backend to indicate the something requires restarting to complete the transaction.
+class PackageKitUpdateDetailEvent extends PackageKitEvent {
+  /// The ID of the package this event relates to.
+  final PackageKitPackageId packageId;
+
+  /// Packages that are being updated.
+  final List<PackageKitPackageId> updates;
+
+  /// Packages that are being obsoleted by this update.
+  final List<PackageKitPackageId> obsoletes;
+
+  /// A list of URLs containing more details about this update.
+  final List<String> vendorUrls;
+
+  /// A list of issue URLs fixed by this update.
+  final List<String> bugzillaUrls;
+
+  /// A list of CVE URLs fixed by this update.
+  final List<String> cveUrls;
+
+  /// Restart requirements for this update.
+  final PackageKitRestart restart;
+
+  /// Text describing the update.
+  final String updateText;
+
+  /// Text describing the changes since the last version.
+  final String changelog;
+
+  /// The state of the update.
+  final PackageKitUpdateState state;
+
+  /// The date that the update was issued.
+  final DateTime? issued;
+
+  /// The date that the update was updated.
+  final DateTime? updated;
+
+  const PackageKitUpdateDetailEvent(
+      {required this.packageId,
+      this.updates = const [],
+      this.obsoletes = const [],
+      this.vendorUrls = const [],
+      this.bugzillaUrls = const [],
+      this.cveUrls = const [],
+      this.restart = PackageKitRestart.unknown,
+      this.updateText = '',
+      this.changelog = '',
+      this.state = PackageKitUpdateState.unknown,
+      this.issued,
+      this.updated});
+
+  @override
+  bool operator ==(other) {
+    if (identical(this, other)) return true;
+    final listEquals = const DeepCollectionEquality().equals;
+
+    return other is PackageKitUpdateDetailEvent &&
+        other.packageId == packageId &&
+        listEquals(other.updates, updates) &&
+        listEquals(other.obsoletes, obsoletes) &&
+        listEquals(other.vendorUrls, vendorUrls) &&
+        listEquals(other.cveUrls, cveUrls) &&
+        other.restart == restart &&
+        other.updateText == updateText &&
+        other.state == state &&
+        other.issued == issued &&
+        other.updated == updated;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      packageId,
+      Object.hashAll(updates),
+      Object.hashAll(obsoletes),
+      Object.hashAll(vendorUrls),
+      Object.hashAll(cveUrls),
+      restart,
+      updateText,
+      state,
+      issued,
+      updated);
+
+  @override
+  String toString() =>
+      "$runtimeType(packageId: '$packageId', updates: $updates, obsoletes: $obsoletes, vendorUrls: $vendorUrls, cveUrls: $cveUrls, restart: $restart, updateText: $updateText, state: $state, issued: $issued, updated: $updated)";
+}
+
 /// A PackageKit transaction.
 class PackageKitTransaction {
   /// Remote transaction object.
@@ -843,13 +947,47 @@ class PackageKitTransaction {
           if (signal.signature != DBusSignature('us')) {
             throw 'Invalid ${signal.name} signal';
           }
-          var typeValue = signal.values[0].asUint32();
+          var type = _decodeRestart(signal.values[0].asUint32());
           return PackageKitRequireRestartEvent(
-              type: typeValue < PackageKitRestart.values.length
-                  ? PackageKitRestart.values[typeValue]
-                  : PackageKitRestart.unknown,
+              type: type,
               packageId:
                   PackageKitPackageId.fromString(signal.values[1].asString()));
+        case 'UpdateDetail':
+          if (signal.signature != DBusSignature('sasasasasasussuss')) {
+            throw 'Invalid ${signal.name} signal';
+          }
+          var packageId =
+              PackageKitPackageId.fromString(signal.values[0].asString());
+          var updates = signal.values[1]
+              .asStringArray()
+              .map((s) => PackageKitPackageId.fromString(s))
+              .toList();
+          var obsoletes = signal.values[2]
+              .asStringArray()
+              .map((s) => PackageKitPackageId.fromString(s))
+              .toList();
+          var vendorUrls = signal.values[3].asStringArray().toList();
+          var bugzillaUrls = signal.values[4].asStringArray().toList();
+          var cveUrls = signal.values[5].asStringArray().toList();
+          var restart = _decodeRestart(signal.values[6].asUint32());
+          var updateText = signal.values[7].asString();
+          var changelog = signal.values[8].asString();
+          var state = _decodeUpdateState(signal.values[9].asUint32());
+          var issued = _decodeDateTime(signal.values[10].asString());
+          var updated = _decodeDateTime(signal.values[11].asString());
+          return PackageKitUpdateDetailEvent(
+              packageId: packageId,
+              updates: updates,
+              obsoletes: obsoletes,
+              vendorUrls: vendorUrls,
+              bugzillaUrls: bugzillaUrls,
+              cveUrls: cveUrls,
+              restart: restart,
+              updateText: updateText,
+              changelog: changelog,
+              state: state,
+              issued: issued,
+              updated: updated);
         default:
           return PackageKitUnknownEvent(signal.name, signal.values);
       }
@@ -964,6 +1102,16 @@ class PackageKitTransaction {
     var flags = 0;
     await _object.callMethod(_packageKitTransactionInterfaceName, 'RepoRemove',
         [DBusString(id), DBusUint64(flags), DBusBoolean(autoremovePackages)],
+        replySignature: DBusSignature(''));
+  }
+
+  /// Gets update information for packages with [packageIds].
+  /// This method generates [PackageKitUpdateDetailEvent] events.
+  Future<void> getUpdateDetail(Iterable<PackageKitPackageId> packageIds) async {
+    await _object.callMethod(
+        _packageKitTransactionInterfaceName,
+        'GetUpdateDetail',
+        [DBusArray.string(packageIds.map((id) => id.toString()))],
         replySignature: DBusSignature(''));
   }
 

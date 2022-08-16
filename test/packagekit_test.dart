@@ -215,6 +215,32 @@ class MockPackageKitTransaction extends DBusObject {
         }
         emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
+      case 'GetUpdateDetail':
+        var packageIds = (methodCall.values[0] as DBusArray)
+            .children
+            .map((value) => (value as DBusString).value);
+        for (var id in packageIds) {
+          var package = server.findAvailable(id);
+          if (package == null) {
+            emitErrorCode(errorPackageNotFound, 'Package not found');
+            emitFinished(exitFailed, server.transactionRuntime);
+            return DBusMethodSuccessResponse();
+          }
+          emitUpdateDetail(id,
+              updates: package.updates,
+              obsoletes: package.obsoletes,
+              vendorUrls: package.vendorUrls,
+              bugzillaUrls: package.bugzillaUrls,
+              cveUrls: package.cveUrls,
+              restart: package.updateRestart,
+              updateText: package.updateText,
+              changelog: package.changelog,
+              state: package.updateState,
+              issued: package.updateIssued,
+              updated: package.updateUpdated);
+        }
+        emitFinished(exitSuccess, server.transactionRuntime);
+        return DBusMethodSuccessResponse();
       case 'GetUpdates':
         for (var package in server.installedPackages) {
           for (var source in server.availablePackages.keys) {
@@ -466,6 +492,34 @@ class MockPackageKitTransaction extends DBusObject {
     emitSignal('org.freedesktop.PackageKit.Transaction', 'RequireRestart',
         [DBusUint32(type), DBusString(packageId)]);
   }
+
+  void emitUpdateDetail(String packageId,
+      {Iterable<String> updates = const [],
+      Iterable<String> obsoletes = const [],
+      Iterable<String> vendorUrls = const [],
+      Iterable<String> bugzillaUrls = const [],
+      Iterable<String> cveUrls = const [],
+      int restart = 0,
+      String updateText = '',
+      String changelog = '',
+      int state = 0,
+      String issued = '',
+      String updated = ''}) {
+    emitSignal('org.freedesktop.PackageKit.Transaction', 'UpdateDetail', [
+      DBusString(packageId),
+      DBusArray.string(updates),
+      DBusArray.string(obsoletes),
+      DBusArray.string(vendorUrls),
+      DBusArray.string(bugzillaUrls),
+      DBusArray.string(cveUrls),
+      DBusUint32(restart),
+      DBusString(updateText),
+      DBusString(changelog),
+      DBusUint32(state),
+      DBusString(issued),
+      DBusString(updated)
+    ]);
+  }
 }
 
 class MockPackageKitRoot extends DBusObject {
@@ -554,6 +608,17 @@ class MockPackage {
   final int size;
   final List<String> fileList;
   final List<String> dependsOn;
+  final List<String> updates;
+  final List<String> obsoletes;
+  final List<String> vendorUrls;
+  final List<String> bugzillaUrls;
+  final List<String> cveUrls;
+  final int updateRestart;
+  final String updateText;
+  final String changelog;
+  final int updateState;
+  final String updateIssued;
+  final String updateUpdated;
 
   const MockPackage(this.name, this.version,
       {this.arch = '',
@@ -564,7 +629,18 @@ class MockPackage {
       this.license = '',
       this.size = 0,
       this.fileList = const [],
-      this.dependsOn = const []});
+      this.updates = const [],
+      this.obsoletes = const [],
+      this.vendorUrls = const [],
+      this.bugzillaUrls = const [],
+      this.cveUrls = const [],
+      this.dependsOn = const [],
+      this.updateRestart = 0,
+      this.updateText = '',
+      this.changelog = '',
+      this.updateState = 0,
+      this.updateIssued = '',
+      this.updateUpdated = ''});
 }
 
 class MockPackageKitServer extends DBusClient {
@@ -1804,6 +1880,72 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
         ]));
     await transaction.refreshCache();
+  });
+
+  test('get update detail', () async {
+    var server = DBusServer();
+    addTearDown(() async => await server.close());
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var packagekit = MockPackageKitServer(clientAddress,
+        transactionRuntime: 1234,
+        installedPackages: [
+          MockPackage('hello', '2.9', arch: 'arm64')
+        ],
+        availablePackages: {
+          'ubuntu-hirsute-main': [
+            MockPackage('hello', '2.10',
+                arch: 'arm64',
+                updates: ['hello-child;1.3;arm64;ubuntu-hirsute-main'],
+                obsoletes: ['old-hello;1.0;arm64;ubuntu-hirsute-main'],
+                vendorUrls: ['https://example.com/update1'],
+                bugzillaUrls: ['https://issues.example.com/issue1'],
+                cveUrls: ['https://cve.org/cve1'],
+                updateRestart: 2,
+                updateText: 'UPDATE-TEXT',
+                changelog: 'CHANGELOG',
+                updateState: 3,
+                updateIssued: '2022-06-07T11:23:00Z',
+                updateUpdated: '2022-06-09T11:23:00Z')
+          ]
+        });
+    addTearDown(() async => await packagekit.close());
+    await packagekit.start();
+
+    var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
+    await client.connect();
+
+    var transaction = await client.createTransaction();
+    expect(
+        transaction.events,
+        emitsInOrder([
+          PackageKitUpdateDetailEvent(
+              packageId: PackageKitPackageId.fromString(
+                  'hello;2.10;arm64;ubuntu-hirsute-main'),
+              updates: [
+                PackageKitPackageId.fromString(
+                    'hello-child;1.3;arm64;ubuntu-hirsute-main')
+              ],
+              obsoletes: [
+                PackageKitPackageId.fromString(
+                    'old-hello;1.0;arm64;ubuntu-hirsute-main')
+              ],
+              vendorUrls: ['https://example.com/update1'],
+              bugzillaUrls: ['https://issues.example.com/issue1'],
+              cveUrls: ['https://cve.org/cve1'],
+              restart: PackageKitRestart.application,
+              updateText: 'UPDATE-TEXT',
+              changelog: 'CHANGELOG',
+              state: PackageKitUpdateState.testing,
+              issued: DateTime.utc(2022, 6, 7, 11, 23),
+              updated: DateTime.utc(2022, 6, 9, 11, 23)),
+          PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
+        ]));
+    await transaction.getUpdateDetail([
+      PackageKitPackageId.fromString('hello;2.10;arm64;ubuntu-hirsute-main')
+    ]);
   });
 
   test('get updates', () async {
