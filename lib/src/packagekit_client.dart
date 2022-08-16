@@ -512,7 +512,7 @@ class PackageKitFilesEvent extends PackageKitEvent {
   }
 
   @override
-  int get hashCode => Object.hash(packageId, fileList);
+  int get hashCode => Object.hash(packageId, Object.hashAll(fileList));
 
   @override
   String toString() =>
