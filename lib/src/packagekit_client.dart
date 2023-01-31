@@ -368,6 +368,16 @@ int _encodeTransactionFlags(Set<PackageKitTransactionFlag> flags) {
   return value;
 }
 
+Set<PackageKitTransactionFlag> _decodeTransactionFlags(int value) {
+  var flags = <PackageKitTransactionFlag>{};
+  for (var f in PackageKitTransactionFlag.values) {
+    if ((1 << f.index) & value != 0) {
+      flags.add(f);
+    }
+  }
+  return flags;
+}
+
 /// The state of an update.
 enum PackageKitUpdateState { unknown, stable, unstable, testing }
 
@@ -844,8 +854,9 @@ class PackageKitTransaction {
 
   /// Creates a PackageKit transaction from [objectPath].
   /// This is only required if accessing an existing transaction, otherwise use [PackageKitClient.createTransaction].
-  PackageKitTransaction(DBusClient bus, DBusObjectPath objectPath)
-      : _object =
+  PackageKitTransaction(DBusClient bus, DBusObjectPath objectPath,
+      {DBusRemoteObject? object})
+      : _object = object ??
             DBusRemoteObject(bus, name: _packageKitBusName, path: objectPath) {
     events = DBusSignalStream(bus,
             sender: _packageKitBusName,
@@ -1243,6 +1254,103 @@ class PackageKitTransaction {
           DBusUint32(upgradeKind.index)
         ],
         replySignature: DBusSignature(''));
+  }
+
+  /// The transaction role enum, e.g. update-system.
+  Future<PackageKitRole> getRole() async {
+    return _object
+        .getProperty(_packageKitTransactionInterfaceName, 'Role',
+            signature: DBusSignature('u'))
+        .then((result) => PackageKitRole.values[result.asUint32()]);
+  }
+
+  /// The transaction status enum, e.g. downloading.
+  Future<PackageKitStatus> getStatus() async {
+    return _object
+        .getProperty(_packageKitTransactionInterfaceName, 'Status',
+            signature: DBusSignature('u'))
+        .then((result) => PackageKitStatus.values[result.asUint32()]);
+  }
+
+  /// The last package_id that was processed, e.g. hal;0.1.2;i386;fedora.
+  Future<String> getLastPackage() async {
+    return _object
+        .getProperty(_packageKitTransactionInterfaceName, 'LastPackage',
+            signature: DBusSignature('s'))
+        .then((result) => result.asString());
+  }
+
+  /// The uid of the user that started the transaction.
+  Future<int> getUid() async {
+    return _object
+        .getProperty(_packageKitTransactionInterfaceName, 'Uid',
+            signature: DBusSignature('u'))
+        .then((result) => result.asUint32());
+  }
+
+  /// The percentage complete of the transaction.
+  Future<int> getPercentage() async {
+    return _object
+        .getProperty(_packageKitTransactionInterfaceName, 'Percentage',
+            signature: DBusSignature('u'))
+        .then((result) => result.asUint32());
+  }
+
+  /// If the transaction can be cancelled.
+  Future<bool> getAllowCancel() async {
+    return _object
+        .getProperty(_packageKitTransactionInterfaceName, 'AllowCancel',
+            signature: DBusSignature('b'))
+        .then((result) => result.asBoolean());
+  }
+
+  /// If the original caller of the method is still connected to the system bus.
+  Future<bool> getCallerActive() async {
+    return _object
+        .getProperty(_packageKitTransactionInterfaceName, 'CallerActive',
+            signature: DBusSignature('b'))
+        .then((result) => result.asBoolean());
+  }
+
+  /// The amount of time elapsed during the transaction in seconds.
+  Future<int> getElapsedTime() async {
+    return _object
+        .getProperty(_packageKitTransactionInterfaceName, 'ElapsedTime',
+            signature: DBusSignature('u'))
+        .then((result) => result.asUint32());
+  }
+
+  /// The estimated time remaining of the transaction in seconds, or 0 if not known.
+  Future<int> getRemainingTime() async {
+    return _object
+        .getProperty(_packageKitTransactionInterfaceName, 'RemainingTime',
+            signature: DBusSignature('u'))
+        .then((result) => result.asUint32());
+  }
+
+  /// The estimated speed of the transaction (copying, downloading, etc.) in bits per second, or 0 if not known.
+  Future<int> getSpeed() async {
+    return _object
+        .getProperty(_packageKitTransactionInterfaceName, 'Speed',
+            signature: DBusSignature('u'))
+        .then((result) => result.asUint32());
+  }
+
+  /// The number of bytes remaining to download, 0 if nothing is left to download.
+  Future<int> getDownloadSizeRemaining() async {
+    return _object
+        .getProperty(
+            _packageKitTransactionInterfaceName, 'DownloadSizeRemaining',
+            signature: DBusSignature('t'))
+        .then((result) => result.asUint64());
+  }
+
+  /// The flags set for this transaction, e.g. SIMULATE or ONLY_DOWNLOAD.
+  Future<Set<PackageKitTransactionFlag>> getTransactionFlags() async {
+    return _object
+        .getProperty(_packageKitTransactionInterfaceName, 'TransactionFlags',
+            signature: DBusSignature('t'))
+        .then((result) => _decodeTransactionFlags(result.asUint64()));
   }
 }
 
