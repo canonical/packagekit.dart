@@ -760,6 +760,24 @@ class MockPackageKitServer extends DBusClient {
   }
 }
 
+class MockTransactionObject extends DBusRemoteObject {
+  MockTransactionObject(DBusClient client,
+      {required String name, required DBusObjectPath path, this.properties})
+      : super(client, name: name, path: path);
+
+  Map<String, DBusValue>? properties;
+
+  @override
+  Future<DBusValue> getProperty(String interface, String name,
+      {DBusSignature? signature}) async {
+    if (properties?[name] == null) {
+      throw DBusUnknownPropertyException(
+          DBusMethodErrorResponse.unknownProperty(name));
+    }
+    return properties![name]!;
+  }
+}
+
 void main() {
   test('daemon version', () async {
     var server = DBusServer();
@@ -2072,5 +2090,56 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
         ]));
     await transaction.upgradeSystem('impish', PackageKitDistroUpgrade.stable);
+  });
+
+  test('get transaction properties', () async {
+    var server = DBusServer();
+    addTearDown(() async => await server.close());
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    var packagekit = MockPackageKitServer(clientAddress);
+    addTearDown(() async => await packagekit.close());
+    await packagekit.start();
+
+    var transaction = PackageKitTransaction(
+      DBusClient(clientAddress),
+      DBusObjectPath('/foo/bar'),
+      object: MockTransactionObject(DBusClient(clientAddress),
+          name: 'foo.bar',
+          path: DBusObjectPath('/foo/bar'),
+          properties: {
+            'Role': DBusUint32(3),
+            'Status': DBusUint32(5),
+            'LastPackage': DBusString('hal;0.1.2;i386;fedora'),
+            'Uid': DBusUint32(1000),
+            'Percentage': DBusUint32(42),
+            'AllowCancel': DBusBoolean(true),
+            'CallerActive': DBusBoolean(false),
+            'ElapsedTime': DBusUint32(12345),
+            'RemainingTime': DBusUint32(54321),
+            'Speed': DBusUint32(299792458),
+            'DownloadSizeRemaining': DBusUint64(3000000000),
+            'TransactionFlags': DBusUint64(7),
+          }),
+    );
+
+    expect(await transaction.getRole(), equals(PackageKitRole.getDetails));
+    expect(await transaction.getStatus(), equals(PackageKitStatus.info));
+    expect(await transaction.getLastPackage(), equals('hal;0.1.2;i386;fedora'));
+    expect(await transaction.getUid(), equals(1000));
+    expect(await transaction.getPercentage(), equals(42));
+    expect(await transaction.getAllowCancel(), equals(true));
+    expect(await transaction.getCallerActive(), equals(false));
+    expect(await transaction.getElapsedTime(), equals(12345));
+    expect(await transaction.getRemainingTime(), equals(54321));
+    expect(await transaction.getSpeed(), equals(299792458));
+    expect(await transaction.getDownloadSizeRemaining(), equals(3000000000));
+    expect(
+        await transaction.getTransactionFlags(),
+        equals({
+          PackageKitTransactionFlag.onlyTrusted,
+          PackageKitTransactionFlag.simulate,
+          PackageKitTransactionFlag.onlyDownload,
+        }));
   });
 }
