@@ -36,7 +36,66 @@ const int filterInstalled = 0x4;
 class MockPackageKitTransaction extends DBusObject {
   final MockPackageKitServer server;
 
-  MockPackageKitTransaction(this.server, DBusObjectPath path) : super(path);
+  final int role;
+  final int status;
+  final String lastPackage;
+  final int uid;
+  final int percentage;
+  final bool allowCancel;
+  final bool callerActive;
+  final int elapsedTime;
+  final int remainingTime;
+  final int speed;
+  final int downloadSizeRemaining;
+  final int transactionFlags;
+
+  MockPackageKitTransaction(this.server, DBusObjectPath path,
+      {this.role = 0,
+      this.status = 0,
+      this.lastPackage = '',
+      this.uid = 0,
+      this.percentage = 0,
+      this.allowCancel = false,
+      this.callerActive = false,
+      this.elapsedTime = 0,
+      this.remainingTime = 0,
+      this.speed = 0,
+      this.downloadSizeRemaining = 0,
+      this.transactionFlags = 0})
+      : super(path);
+
+  @override
+  Future<DBusMethodResponse> getProperty(String interface, String name,
+      {DBusSignature? signature}) async {
+    switch (name) {
+      case 'Role':
+        return DBusGetPropertyResponse(DBusUint32(this.role));
+      case 'Status':
+        return DBusGetPropertyResponse(DBusUint32(this.status));
+      case 'LastPackage':
+        return DBusGetPropertyResponse(DBusString(this.lastPackage));
+      case 'Uid':
+        return DBusGetPropertyResponse(DBusUint32(this.uid));
+      case 'Percentage':
+        return DBusGetPropertyResponse(DBusUint32(this.percentage));
+      case 'AllowCancel':
+        return DBusGetPropertyResponse(DBusBoolean(this.allowCancel));
+      case 'CallerActive':
+        return DBusGetPropertyResponse(DBusBoolean(this.callerActive));
+      case 'ElapsedTime':
+        return DBusGetPropertyResponse(DBusUint32(this.elapsedTime));
+      case 'RemainingTime':
+        return DBusGetPropertyResponse(DBusUint32(this.remainingTime));
+      case 'Speed':
+        return DBusGetPropertyResponse(DBusUint32(this.speed));
+      case 'DownloadSizeRemaining':
+        return DBusGetPropertyResponse(DBusUint64(this.downloadSizeRemaining));
+      case 'TransactionFlags':
+        return DBusGetPropertyResponse(DBusUint64(this.transactionFlags));
+      default:
+        return DBusMethodErrorResponse.unknownProperty(name);
+    }
+  }
 
   @override
   Future<DBusMethodResponse> handleMethodCall(DBusMethodCall methodCall) async {
@@ -524,7 +583,6 @@ class MockPackageKitTransaction extends DBusObject {
 
 class MockPackageKitRoot extends DBusObject {
   final MockPackageKitServer server;
-  var nextTransactionId = 1;
 
   MockPackageKitRoot(this.server)
       : super(DBusObjectPath('/org/freedesktop/PackageKit'));
@@ -555,10 +613,7 @@ class MockPackageKitRoot extends DBusObject {
     if (methodCall.interface == 'org.freedesktop.PackageKit') {
       switch (methodCall.name) {
         case 'CreateTransaction':
-          var path = DBusObjectPath('/Transaction$nextTransactionId');
-          nextTransactionId++;
-          var transaction = MockPackageKitTransaction(server, path);
-          await server.registerObject(transaction);
+          var transaction = await server.addTransaction();
           returnValues = [transaction.path];
           break;
       }
@@ -660,6 +715,7 @@ class MockPackageKitServer extends DBusClient {
   final int versionMicro;
   final int versionMinor;
 
+  var nextTransactionId = 1;
   final int transactionRuntime;
   final List<MockRepository> repositories;
   final Map<String, List<MockPackage>> availablePackages;
@@ -693,6 +749,38 @@ class MockPackageKitServer extends DBusClient {
       this.installedPackages = const [],
       this.availableFiles = const {}})
       : super(clientAddress);
+
+  Future<MockPackageKitTransaction> addTransaction(
+      {int role = 0,
+      int status = 0,
+      String lastPackage = '',
+      int uid = 0,
+      int percentage = 0,
+      bool allowCancel = false,
+      bool callerActive = false,
+      int elapsedTime = 0,
+      int remainingTime = 0,
+      int speed = 0,
+      int downloadSizeRemaining = 0,
+      int transactionFlags = 0}) async {
+    var path = DBusObjectPath('/Transaction$nextTransactionId');
+    nextTransactionId++;
+    var transaction = MockPackageKitTransaction(this, path,
+        role: role,
+        status: status,
+        lastPackage: lastPackage,
+        uid: uid,
+        percentage: percentage,
+        allowCancel: allowCancel,
+        callerActive: callerActive,
+        elapsedTime: elapsedTime,
+        remainingTime: remainingTime,
+        speed: speed,
+        downloadSizeRemaining: downloadSizeRemaining,
+        transactionFlags: transactionFlags);
+    await registerObject(transaction);
+    return transaction;
+  }
 
   MockPackage? findInstalled(String packageId) {
     var id = PackageKitPackageId.fromString(packageId);
@@ -2098,30 +2186,23 @@ void main() {
     var clientAddress =
         await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
     var packagekit = MockPackageKitServer(clientAddress);
+    var t = await packagekit.addTransaction(
+        role: 3,
+        status: 5,
+        lastPackage: 'hal;0.1.2;i386;fedora',
+        uid: 1000,
+        percentage: 42,
+        allowCancel: true,
+        callerActive: false,
+        elapsedTime: 12345,
+        remainingTime: 54321,
+        speed: 299792458,
+        downloadSizeRemaining: 3000000000,
+        transactionFlags: 7);
     addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
-    var transaction = PackageKitTransaction(
-      DBusClient(clientAddress),
-      DBusObjectPath('/foo/bar'),
-      object: MockTransactionObject(DBusClient(clientAddress),
-          name: 'foo.bar',
-          path: DBusObjectPath('/foo/bar'),
-          properties: {
-            'Role': DBusUint32(3),
-            'Status': DBusUint32(5),
-            'LastPackage': DBusString('hal;0.1.2;i386;fedora'),
-            'Uid': DBusUint32(1000),
-            'Percentage': DBusUint32(42),
-            'AllowCancel': DBusBoolean(true),
-            'CallerActive': DBusBoolean(false),
-            'ElapsedTime': DBusUint32(12345),
-            'RemainingTime': DBusUint32(54321),
-            'Speed': DBusUint32(299792458),
-            'DownloadSizeRemaining': DBusUint64(3000000000),
-            'TransactionFlags': DBusUint64(7),
-          }),
-    );
+    var transaction = PackageKitTransaction(DBusClient(clientAddress), t.path);
 
     expect(await transaction.getRole(), equals(PackageKitRole.getDetails));
     expect(await transaction.getStatus(), equals(PackageKitStatus.info));

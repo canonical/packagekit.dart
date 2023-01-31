@@ -854,9 +854,8 @@ class PackageKitTransaction {
 
   /// Creates a PackageKit transaction from [objectPath].
   /// This is only required if accessing an existing transaction, otherwise use [PackageKitClient.createTransaction].
-  PackageKitTransaction(DBusClient bus, DBusObjectPath objectPath,
-      {DBusRemoteObject? object})
-      : _object = object ??
+  PackageKitTransaction(DBusClient bus, DBusObjectPath objectPath)
+      : _object =
             DBusRemoteObject(bus, name: _packageKitBusName, path: objectPath) {
     events = DBusSignalStream(bus,
             sender: _packageKitBusName,
