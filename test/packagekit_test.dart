@@ -69,29 +69,29 @@ class MockPackageKitTransaction extends DBusObject {
       {DBusSignature? signature}) async {
     switch (name) {
       case 'Role':
-        return DBusGetPropertyResponse(DBusUint32(this.role));
+        return DBusGetPropertyResponse(DBusUint32(role));
       case 'Status':
-        return DBusGetPropertyResponse(DBusUint32(this.status));
+        return DBusGetPropertyResponse(DBusUint32(status));
       case 'LastPackage':
-        return DBusGetPropertyResponse(DBusString(this.lastPackage));
+        return DBusGetPropertyResponse(DBusString(lastPackage));
       case 'Uid':
-        return DBusGetPropertyResponse(DBusUint32(this.uid));
+        return DBusGetPropertyResponse(DBusUint32(uid));
       case 'Percentage':
-        return DBusGetPropertyResponse(DBusUint32(this.percentage));
+        return DBusGetPropertyResponse(DBusUint32(percentage));
       case 'AllowCancel':
-        return DBusGetPropertyResponse(DBusBoolean(this.allowCancel));
+        return DBusGetPropertyResponse(DBusBoolean(allowCancel));
       case 'CallerActive':
-        return DBusGetPropertyResponse(DBusBoolean(this.callerActive));
+        return DBusGetPropertyResponse(DBusBoolean(callerActive));
       case 'ElapsedTime':
-        return DBusGetPropertyResponse(DBusUint32(this.elapsedTime));
+        return DBusGetPropertyResponse(DBusUint32(elapsedTime));
       case 'RemainingTime':
-        return DBusGetPropertyResponse(DBusUint32(this.remainingTime));
+        return DBusGetPropertyResponse(DBusUint32(remainingTime));
       case 'Speed':
-        return DBusGetPropertyResponse(DBusUint32(this.speed));
+        return DBusGetPropertyResponse(DBusUint32(speed));
       case 'DownloadSizeRemaining':
-        return DBusGetPropertyResponse(DBusUint64(this.downloadSizeRemaining));
+        return DBusGetPropertyResponse(DBusUint64(downloadSizeRemaining));
       case 'TransactionFlags':
-        return DBusGetPropertyResponse(DBusUint64(this.transactionFlags));
+        return DBusGetPropertyResponse(DBusUint64(transactionFlags));
       default:
         return DBusMethodErrorResponse.unknownProperty(name);
     }
