@@ -65,36 +65,22 @@ class MockPackageKitTransaction extends DBusObject {
       : super(path);
 
   @override
-  Future<DBusMethodResponse> getProperty(String interface, String name,
-      {DBusSignature? signature}) async {
-    switch (name) {
-      case 'Role':
-        return DBusGetPropertyResponse(DBusUint32(role));
-      case 'Status':
-        return DBusGetPropertyResponse(DBusUint32(status));
-      case 'LastPackage':
-        return DBusGetPropertyResponse(DBusString(lastPackage));
-      case 'Uid':
-        return DBusGetPropertyResponse(DBusUint32(uid));
-      case 'Percentage':
-        return DBusGetPropertyResponse(DBusUint32(percentage));
-      case 'AllowCancel':
-        return DBusGetPropertyResponse(DBusBoolean(allowCancel));
-      case 'CallerActive':
-        return DBusGetPropertyResponse(DBusBoolean(callerActive));
-      case 'ElapsedTime':
-        return DBusGetPropertyResponse(DBusUint32(elapsedTime));
-      case 'RemainingTime':
-        return DBusGetPropertyResponse(DBusUint32(remainingTime));
-      case 'Speed':
-        return DBusGetPropertyResponse(DBusUint32(speed));
-      case 'DownloadSizeRemaining':
-        return DBusGetPropertyResponse(DBusUint64(downloadSizeRemaining));
-      case 'TransactionFlags':
-        return DBusGetPropertyResponse(DBusUint64(transactionFlags));
-      default:
-        return DBusMethodErrorResponse.unknownProperty(name);
-    }
+  Future<DBusMethodResponse> getAllProperties(String interface) async {
+    var properties = <String, DBusValue>{
+      'Role': DBusUint32(role),
+      'Status': DBusUint32(status),
+      'LastPackage': DBusString(lastPackage),
+      'Uid': DBusUint32(uid),
+      'Percentage': DBusUint32(percentage),
+      'AllowCancel': DBusBoolean(allowCancel),
+      'CallerActive': DBusBoolean(callerActive),
+      'ElapsedTime': DBusUint32(elapsedTime),
+      'RemainingTime': DBusUint32(remainingTime),
+      'Speed': DBusUint32(speed),
+      'DownloadSizeRemaining': DBusUint64(downloadSizeRemaining),
+      'TransactionFlags': DBusUint64(transactionFlags),
+    };
+    return DBusGetAllPropertiesResponse(properties);
   }
 
   @override
@@ -2203,20 +2189,21 @@ void main() {
     await packagekit.start();
 
     var transaction = PackageKitTransaction(DBusClient(clientAddress), t.path);
+    await transaction.initialized;
 
-    expect(await transaction.getRole(), equals(PackageKitRole.getDetails));
-    expect(await transaction.getStatus(), equals(PackageKitStatus.info));
-    expect(await transaction.getLastPackage(), equals('hal;0.1.2;i386;fedora'));
-    expect(await transaction.getUid(), equals(1000));
-    expect(await transaction.getPercentage(), equals(42));
-    expect(await transaction.getAllowCancel(), equals(true));
-    expect(await transaction.getCallerActive(), equals(false));
-    expect(await transaction.getElapsedTime(), equals(12345));
-    expect(await transaction.getRemainingTime(), equals(54321));
-    expect(await transaction.getSpeed(), equals(299792458));
-    expect(await transaction.getDownloadSizeRemaining(), equals(3000000000));
+    expect(transaction.role, equals(PackageKitRole.getDetails));
+    expect(transaction.status, equals(PackageKitStatus.info));
+    expect(transaction.lastPackage, equals('hal;0.1.2;i386;fedora'));
+    expect(transaction.uid, equals(1000));
+    expect(transaction.percentage, equals(42));
+    expect(transaction.allowCancel, equals(true));
+    expect(transaction.callerActive, equals(false));
+    expect(transaction.elapsedTime, equals(12345));
+    expect(transaction.remainingTime, equals(54321));
+    expect(transaction.speed, equals(299792458));
+    expect(transaction.downloadSizeRemaining, equals(3000000000));
     expect(
-        await transaction.getTransactionFlags(),
+        transaction.transactionFlags,
         equals({
           PackageKitTransactionFlag.onlyTrusted,
           PackageKitTransactionFlag.simulate,
