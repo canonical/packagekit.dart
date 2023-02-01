@@ -510,6 +510,7 @@ class MockPackageKitTransaction extends DBusObject {
   void emitFinished(int exit, int runtime) {
     emitSignal('org.freedesktop.PackageKit.Transaction', 'Finished',
         [DBusUint32(exit), DBusUint32(runtime)]);
+    emitSignal('org.freedesktop.PackageKit.Transaction', 'Destroy', []);
   }
 
   void emitItemProgress(String packageId, int status, int percentage) {
