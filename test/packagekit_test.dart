@@ -2189,8 +2189,11 @@ void main() {
     addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
-    var transaction = PackageKitTransaction(DBusClient(clientAddress), t.path);
-    await transaction.initialized;
+    var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
+    await client.connect();
+
+    var transaction = await client.getTransaction(t.path);
 
     expect(transaction.role, equals(PackageKitRole.getDetails));
     expect(transaction.status, equals(PackageKitStatus.info));

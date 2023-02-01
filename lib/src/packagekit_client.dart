@@ -854,40 +854,14 @@ class PackageKitTransaction {
 
   /// Transaction properties.
   final _properties = <String, DBusValue>{};
-  StreamSubscription? _propertiesChangedSubscription;
-  StreamSubscription? _transactionDestroyedSubscription;
-  late Future<void> initialized;
-
-  Future<void> _close() async {
-    if (_propertiesChangedSubscription != null) {
-      await _propertiesChangedSubscription!.cancel();
-      _propertiesChangedSubscription = null;
-    }
-    if (_transactionDestroyedSubscription != null) {
-      await _transactionDestroyedSubscription!.cancel();
-      _transactionDestroyedSubscription = null;
-    }
-  }
+  final _propertiesChangedController =
+      StreamController<List<String>>.broadcast();
 
   /// Creates a PackageKit transaction from [objectPath].
-  /// This is only required if accessing an existing transaction, otherwise use [PackageKitClient.createTransaction].
+  /// This should not be accessed directly, use [PackageKitClient.getTransaction] to get an existing transaction, otherwise use [PackageKitClient.createTransaction].
   PackageKitTransaction(DBusClient bus, DBusObjectPath objectPath)
       : _object =
             DBusRemoteObject(bus, name: _packageKitBusName, path: objectPath) {
-    _propertiesChangedSubscription = _object.propertiesChanged.listen((signal) {
-      if (signal.propertiesInterface == _packageKitTransactionInterfaceName) {
-        _updateProperties(signal.changedProperties);
-      }
-    });
-    _transactionDestroyedSubscription = DBusRemoteObjectSignalStream(
-            object: _object,
-            interface: _packageKitTransactionInterfaceName,
-            name: 'Destroy')
-        .listen((signal) => _close());
-    initialized = _object
-        .getAllProperties(_packageKitTransactionInterfaceName)
-        .then(_updateProperties);
-
     events = DBusSignalStream(bus,
             sender: _packageKitBusName,
             interface: _packageKitTransactionInterfaceName,
@@ -1326,8 +1300,13 @@ class PackageKitTransaction {
   Set<PackageKitTransactionFlag> get transactionFlags =>
       _decodeTransactionFlags(_properties['TransactionFlags']?.asUint64() ?? 0);
 
+  /// Stream of property names as they change.
+  Stream<List<String>> get propertiesChanged =>
+      _propertiesChangedController.stream;
+
   void _updateProperties(Map<String, DBusValue> properties) {
     _properties.addAll(properties);
+    _propertiesChangedController.add(properties.keys.toList());
   }
 }
 
@@ -1339,6 +1318,9 @@ class PackageKitClient {
 
   /// The root D-Bus PackageKit object.
   late final DBusRemoteObject _root;
+
+  /// The transaction objects we are monitoring.
+  final _transactions = <DBusObjectPath, PackageKitTransaction>{};
 
   /// Properties on the root object.
   final _properties = <String, DBusValue>{};
@@ -1422,12 +1404,36 @@ class PackageKitClient {
       return;
     }
 
-    _propertiesChangedSubscription = _root.propertiesChanged.listen((signal) {
-      if (signal.propertiesInterface == _packageKitInterfaceName) {
-        _updateProperties(signal.changedProperties);
+    _propertiesChangedSubscription = DBusSignalStream(_bus,
+            sender: _packageKitBusName,
+            interface: 'org.freedesktop.DBus.Properties')
+        .listen((signal) {
+      if (signal.signature != DBusSignature('sa{sv}as')) {
+        return;
+      }
+
+      var s = DBusPropertiesChangedSignal(signal);
+      if (s.propertiesInterface == _packageKitInterfaceName) {
+        if (s.path == _root.path) {
+          _updateProperties(s.changedProperties);
+        } else {
+          var transaction = _transactions[s.path];
+          transaction?._updateProperties(s.changedProperties);
+        }
       }
     });
     _updateProperties(await _root.getAllProperties(_packageKitInterfaceName));
+  }
+
+  /// Get an existing transaction object at [path].
+  Future<PackageKitTransaction> getTransaction(DBusObjectPath path) async {
+    var transaction = PackageKitTransaction(_bus, path);
+    _transactions[path] = transaction;
+
+    transaction._updateProperties(
+        await transaction._object.getAllProperties(_packageKitInterfaceName));
+
+    return transaction;
   }
 
   /// Creates a new transaction that can have operations done on it.
@@ -1436,7 +1442,7 @@ class PackageKitClient {
         _packageKitInterfaceName, 'CreateTransaction', [],
         replySignature: DBusSignature('o'));
     var transaction =
-        PackageKitTransaction(_bus, result.returnValues[0].asObjectPath());
+        await getTransaction(result.returnValues[0].asObjectPath());
 
     var hints = <String>[];
     if (locale != null) {
@@ -1447,7 +1453,6 @@ class PackageKitClient {
     hints.add('idle=${idle ? 'true' : 'false'}');
     hints.add('cache-age=$cacheAge');
     await transaction._setHints(hints);
-    await transaction.initialized;
 
     return transaction;
   }
