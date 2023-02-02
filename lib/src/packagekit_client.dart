@@ -1413,13 +1413,12 @@ class PackageKitClient {
       }
 
       var s = DBusPropertiesChangedSignal(signal);
-      if (s.propertiesInterface == _packageKitInterfaceName) {
-        if (s.path == _root.path) {
-          _updateProperties(s.changedProperties);
-        } else {
-          var transaction = _transactions[s.path];
-          transaction?._updateProperties(s.changedProperties);
-        }
+      if (s.propertiesInterface == _packageKitInterfaceName &&
+          s.path == _root.path) {
+        _updateProperties(s.changedProperties);
+      } else if (s.propertiesInterface == _packageKitTransactionInterfaceName) {
+        var transaction = _transactions[s.path];
+        transaction?._updateProperties(s.changedProperties);
       }
     });
     _updateProperties(await _root.getAllProperties(_packageKitInterfaceName));
@@ -1430,8 +1429,8 @@ class PackageKitClient {
     var transaction = PackageKitTransaction(_bus, path);
     _transactions[path] = transaction;
 
-    transaction._updateProperties(
-        await transaction._object.getAllProperties(_packageKitInterfaceName));
+    transaction._updateProperties(await transaction._object
+        .getAllProperties(_packageKitTransactionInterfaceName));
 
     return transaction;
   }
