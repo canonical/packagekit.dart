@@ -2214,15 +2214,8 @@ void main() {
           PackageKitTransactionFlag.onlyDownload,
         }));
 
-    await t.client!.emitSignal(
-        path: t.path,
-        interface: 'org.freedesktop.DBus.Properties',
-        name: 'PropertiesChanged',
-        values: [
-          DBusString('org.freedesktop.PackageKit.Transaction'),
-          DBusDict.stringVariant({'Percentage': DBusUint32(10)}),
-          DBusArray.string([]),
-        ]);
+    await t.emitPropertiesChanged('org.freedesktop.PackageKit.Transaction',
+        changedProperties: {'Percentage': DBusUint32(10)});
     await expectLater(transaction.propertiesChanged, emits(['Percentage']));
     expect(transaction.percentage, equals(10));
   });
