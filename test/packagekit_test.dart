@@ -36,7 +36,52 @@ const int filterInstalled = 0x4;
 class MockPackageKitTransaction extends DBusObject {
   final MockPackageKitServer server;
 
-  MockPackageKitTransaction(this.server, DBusObjectPath path) : super(path);
+  final int role;
+  final int status;
+  final String lastPackage;
+  final int uid;
+  final int percentage;
+  final bool allowCancel;
+  final bool callerActive;
+  final int elapsedTime;
+  final int remainingTime;
+  final int speed;
+  final int downloadSizeRemaining;
+  final int transactionFlags;
+
+  MockPackageKitTransaction(this.server, DBusObjectPath path,
+      {this.role = 0,
+      this.status = 0,
+      this.lastPackage = '',
+      this.uid = 0,
+      this.percentage = 0,
+      this.allowCancel = false,
+      this.callerActive = false,
+      this.elapsedTime = 0,
+      this.remainingTime = 0,
+      this.speed = 0,
+      this.downloadSizeRemaining = 0,
+      this.transactionFlags = 0})
+      : super(path);
+
+  @override
+  Future<DBusMethodResponse> getAllProperties(String interface) async {
+    var properties = <String, DBusValue>{
+      'Role': DBusUint32(role),
+      'Status': DBusUint32(status),
+      'LastPackage': DBusString(lastPackage),
+      'Uid': DBusUint32(uid),
+      'Percentage': DBusUint32(percentage),
+      'AllowCancel': DBusBoolean(allowCancel),
+      'CallerActive': DBusBoolean(callerActive),
+      'ElapsedTime': DBusUint32(elapsedTime),
+      'RemainingTime': DBusUint32(remainingTime),
+      'Speed': DBusUint32(speed),
+      'DownloadSizeRemaining': DBusUint64(downloadSizeRemaining),
+      'TransactionFlags': DBusUint64(transactionFlags),
+    };
+    return DBusGetAllPropertiesResponse(properties);
+  }
 
   @override
   Future<DBusMethodResponse> handleMethodCall(DBusMethodCall methodCall) async {
@@ -465,6 +510,7 @@ class MockPackageKitTransaction extends DBusObject {
   void emitFinished(int exit, int runtime) {
     emitSignal('org.freedesktop.PackageKit.Transaction', 'Finished',
         [DBusUint32(exit), DBusUint32(runtime)]);
+    emitSignal('org.freedesktop.PackageKit.Transaction', 'Destroy', []);
   }
 
   void emitItemProgress(String packageId, int status, int percentage) {
@@ -524,7 +570,6 @@ class MockPackageKitTransaction extends DBusObject {
 
 class MockPackageKitRoot extends DBusObject {
   final MockPackageKitServer server;
-  var nextTransactionId = 1;
 
   MockPackageKitRoot(this.server)
       : super(DBusObjectPath('/org/freedesktop/PackageKit'));
@@ -555,10 +600,7 @@ class MockPackageKitRoot extends DBusObject {
     if (methodCall.interface == 'org.freedesktop.PackageKit') {
       switch (methodCall.name) {
         case 'CreateTransaction':
-          var path = DBusObjectPath('/Transaction$nextTransactionId');
-          nextTransactionId++;
-          var transaction = MockPackageKitTransaction(server, path);
-          await server.registerObject(transaction);
+          var transaction = await server.addTransaction();
           returnValues = [transaction.path];
           break;
       }
@@ -660,6 +702,7 @@ class MockPackageKitServer extends DBusClient {
   final int versionMicro;
   final int versionMinor;
 
+  var nextTransactionId = 1;
   final int transactionRuntime;
   final List<MockRepository> repositories;
   final Map<String, List<MockPackage>> availablePackages;
@@ -693,6 +736,38 @@ class MockPackageKitServer extends DBusClient {
       this.installedPackages = const [],
       this.availableFiles = const {}})
       : super(clientAddress);
+
+  Future<MockPackageKitTransaction> addTransaction(
+      {int role = 0,
+      int status = 0,
+      String lastPackage = '',
+      int uid = 0,
+      int percentage = 0,
+      bool allowCancel = false,
+      bool callerActive = false,
+      int elapsedTime = 0,
+      int remainingTime = 0,
+      int speed = 0,
+      int downloadSizeRemaining = 0,
+      int transactionFlags = 0}) async {
+    var path = DBusObjectPath('/Transaction$nextTransactionId');
+    nextTransactionId++;
+    var transaction = MockPackageKitTransaction(this, path,
+        role: role,
+        status: status,
+        lastPackage: lastPackage,
+        uid: uid,
+        percentage: percentage,
+        allowCancel: allowCancel,
+        callerActive: callerActive,
+        elapsedTime: elapsedTime,
+        remainingTime: remainingTime,
+        speed: speed,
+        downloadSizeRemaining: downloadSizeRemaining,
+        transactionFlags: transactionFlags);
+    await registerObject(transaction);
+    return transaction;
+  }
 
   MockPackage? findInstalled(String packageId) {
     var id = PackageKitPackageId.fromString(packageId);
@@ -757,6 +832,24 @@ class MockPackageKitServer extends DBusClient {
     await requestName('org.freedesktop.PackageKit');
     _root = MockPackageKitRoot(this);
     await registerObject(_root);
+  }
+}
+
+class MockTransactionObject extends DBusRemoteObject {
+  MockTransactionObject(DBusClient client,
+      {required String name, required DBusObjectPath path, this.properties})
+      : super(client, name: name, path: path);
+
+  Map<String, DBusValue>? properties;
+
+  @override
+  Future<DBusValue> getProperty(String interface, String name,
+      {DBusSignature? signature}) async {
+    if (properties?[name] == null) {
+      throw DBusUnknownPropertyException(
+          DBusMethodErrorResponse.unknownProperty(name));
+    }
+    return properties![name]!;
   }
 }
 
@@ -2072,5 +2165,58 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
         ]));
     await transaction.upgradeSystem('impish', PackageKitDistroUpgrade.stable);
+  });
+
+  test('get transaction properties', () async {
+    var server = DBusServer();
+    addTearDown(() async => await server.close());
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+    var packagekit = MockPackageKitServer(clientAddress);
+    var t = await packagekit.addTransaction(
+        role: 3,
+        status: 5,
+        lastPackage: 'hal;0.1.2;i386;fedora',
+        uid: 1000,
+        percentage: 42,
+        allowCancel: true,
+        callerActive: false,
+        elapsedTime: 12345,
+        remainingTime: 54321,
+        speed: 299792458,
+        downloadSizeRemaining: 3000000000,
+        transactionFlags: 7);
+    addTearDown(() async => await packagekit.close());
+    await packagekit.start();
+
+    var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
+    await client.connect();
+
+    var transaction = await client.getTransaction(t.path);
+
+    expect(transaction.role, equals(PackageKitRole.getDetails));
+    expect(transaction.status, equals(PackageKitStatus.info));
+    expect(transaction.lastPackage, equals('hal;0.1.2;i386;fedora'));
+    expect(transaction.uid, equals(1000));
+    expect(transaction.percentage, equals(42));
+    expect(transaction.allowCancel, equals(true));
+    expect(transaction.callerActive, equals(false));
+    expect(transaction.elapsedTime, equals(12345));
+    expect(transaction.remainingTime, equals(54321));
+    expect(transaction.speed, equals(299792458));
+    expect(transaction.downloadSizeRemaining, equals(3000000000));
+    expect(
+        transaction.transactionFlags,
+        equals({
+          PackageKitTransactionFlag.onlyTrusted,
+          PackageKitTransactionFlag.simulate,
+          PackageKitTransactionFlag.onlyDownload,
+        }));
+
+    await t.emitPropertiesChanged('org.freedesktop.PackageKit.Transaction',
+        changedProperties: {'Percentage': DBusUint32(10)});
+    await expectLater(transaction.propertiesChanged, emits(['Percentage']));
+    expect(transaction.percentage, equals(10));
   });
 }

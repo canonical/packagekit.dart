@@ -368,6 +368,16 @@ int _encodeTransactionFlags(Set<PackageKitTransactionFlag> flags) {
   return value;
 }
 
+Set<PackageKitTransactionFlag> _decodeTransactionFlags(int value) {
+  var flags = <PackageKitTransactionFlag>{};
+  for (var f in PackageKitTransactionFlag.values) {
+    if ((1 << f.index) & value != 0) {
+      flags.add(f);
+    }
+  }
+  return flags;
+}
+
 /// The state of an update.
 enum PackageKitUpdateState { unknown, stable, unstable, testing }
 
@@ -842,8 +852,57 @@ class PackageKitTransaction {
   /// Events returned from the backend.
   late final Stream<PackageKitEvent> events;
 
+  /// Transaction properties.
+  final _properties = <String, DBusValue>{};
+  final _propertiesChangedController =
+      StreamController<List<String>>.broadcast();
+
+  /// The transaction role enum, e.g. update-system.
+  PackageKitRole get role =>
+      PackageKitRole.values[_properties['Role']?.asUint32() ?? 0];
+
+  /// The transaction status enum, e.g. downloading.
+  PackageKitStatus get status =>
+      PackageKitStatus.values[_properties['Status']?.asUint32() ?? 0];
+
+  /// The last package_id that was processed, e.g. hal;0.1.2;i386;fedora.
+  String get lastPackage => _properties['LastPackage']?.asString() ?? '';
+
+  /// The uid of the user that started the transaction.
+  int get uid => _properties['Uid']?.asUint32() ?? -1;
+
+  /// The percentage complete of the transaction.
+  int get percentage => _properties['Percentage']?.asUint32() ?? 0;
+
+  /// If the transaction can be cancelled.
+  bool get allowCancel => _properties['AllowCancel']?.asBoolean() ?? false;
+
+  /// If the original caller of the method is still connected to the system bus.
+  bool get callerActive => _properties['CallerActive']?.asBoolean() ?? false;
+
+  /// The amount of time elapsed during the transaction in seconds.
+  int get elapsedTime => _properties['ElapsedTime']?.asUint32() ?? 0;
+
+  /// The estimated time remaining of the transaction in seconds, or 0 if not known.
+  int get remainingTime => _properties['RemainingTime']?.asUint32() ?? 0;
+
+  /// The estimated speed of the transaction (copying, downloading, etc.) in bits per second, or 0 if not known.
+  int get speed => _properties['Speed']?.asUint32() ?? 0;
+
+  /// The number of bytes remaining to download, 0 if nothing is left to download.
+  int get downloadSizeRemaining =>
+      _properties['DownloadSizeRemaining']?.asUint64() ?? -1;
+
+  /// The flags set for this transaction, e.g. SIMULATE or ONLY_DOWNLOAD.
+  Set<PackageKitTransactionFlag> get transactionFlags =>
+      _decodeTransactionFlags(_properties['TransactionFlags']?.asUint64() ?? 0);
+
+  /// Stream of property names as they change.
+  Stream<List<String>> get propertiesChanged =>
+      _propertiesChangedController.stream;
+
   /// Creates a PackageKit transaction from [objectPath].
-  /// This is only required if accessing an existing transaction, otherwise use [PackageKitClient.createTransaction].
+  /// This should not be accessed directly, use [PackageKitClient.getTransaction] to get an existing transaction, otherwise use [PackageKitClient.createTransaction].
   PackageKitTransaction(DBusClient bus, DBusObjectPath objectPath)
       : _object =
             DBusRemoteObject(bus, name: _packageKitBusName, path: objectPath) {
@@ -1244,6 +1303,11 @@ class PackageKitTransaction {
         ],
         replySignature: DBusSignature(''));
   }
+
+  void _updateProperties(Map<String, DBusValue> properties) {
+    _properties.addAll(properties);
+    _propertiesChangedController.add(properties.keys.toList());
+  }
 }
 
 /// A client that connects to PackageKit.
@@ -1254,6 +1318,9 @@ class PackageKitClient {
 
   /// The root D-Bus PackageKit object.
   late final DBusRemoteObject _root;
+
+  /// The transaction objects we are monitoring.
+  final _transactions = <DBusObjectPath, PackageKitTransaction>{};
 
   /// Properties on the root object.
   final _properties = <String, DBusValue>{};
@@ -1337,12 +1404,35 @@ class PackageKitClient {
       return;
     }
 
-    _propertiesChangedSubscription = _root.propertiesChanged.listen((signal) {
-      if (signal.propertiesInterface == _packageKitInterfaceName) {
-        _updateProperties(signal.changedProperties);
+    _propertiesChangedSubscription = DBusSignalStream(_bus,
+            sender: _packageKitBusName,
+            interface: 'org.freedesktop.DBus.Properties')
+        .listen((signal) {
+      if (signal.signature != DBusSignature('sa{sv}as')) {
+        return;
+      }
+
+      var s = DBusPropertiesChangedSignal(signal);
+      if (s.propertiesInterface == _packageKitInterfaceName &&
+          s.path == _root.path) {
+        _updateProperties(s.changedProperties);
+      } else if (s.propertiesInterface == _packageKitTransactionInterfaceName) {
+        var transaction = _transactions[s.path];
+        transaction?._updateProperties(s.changedProperties);
       }
     });
     _updateProperties(await _root.getAllProperties(_packageKitInterfaceName));
+  }
+
+  /// Get an existing transaction object at [path].
+  Future<PackageKitTransaction> getTransaction(DBusObjectPath path) async {
+    var transaction = PackageKitTransaction(_bus, path);
+    _transactions[path] = transaction;
+
+    transaction._updateProperties(await transaction._object
+        .getAllProperties(_packageKitTransactionInterfaceName));
+
+    return transaction;
   }
 
   /// Creates a new transaction that can have operations done on it.
@@ -1351,7 +1441,7 @@ class PackageKitClient {
         _packageKitInterfaceName, 'CreateTransaction', [],
         replySignature: DBusSignature('o'));
     var transaction =
-        PackageKitTransaction(_bus, result.returnValues[0].asObjectPath());
+        await getTransaction(result.returnValues[0].asObjectPath());
 
     var hints = <String>[];
     if (locale != null) {
