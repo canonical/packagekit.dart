@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.5
+
+* Added PackageKitTransaction properties.
+
 ## 0.2.4
 
 * Added PackageKitTransaction.getUpdateDetail.
