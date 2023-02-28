@@ -2185,7 +2185,7 @@ void main() {
         remainingTime: 54321,
         speed: 299792458,
         downloadSizeRemaining: 3000000000,
-        transactionFlags: 7);
+        transactionFlags: 14);
     addTearDown(() async => await packagekit.close());
     await packagekit.start();
 
