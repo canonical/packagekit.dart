@@ -352,6 +352,7 @@ enum PackageKitStatus {
 
 /// Flags passed to methods on [PackageKitTransaction].
 enum PackageKitTransactionFlag {
+  none,
   onlyTrusted,
   simulate,
   onlyDownload,
