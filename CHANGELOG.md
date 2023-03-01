@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.6
+
+* Add missing PackageKitTransactionFlag.none.
+
 ## 0.2.5
 
 * Added PackageKitTransaction properties.
