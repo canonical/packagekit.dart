@@ -845,6 +845,58 @@ class PackageKitUpdateDetailEvent extends PackageKitEvent {
       "$runtimeType(packageId: '$packageId', updates: $updates, obsoletes: $obsoletes, vendorUrls: $vendorUrls, cveUrls: $cveUrls, restart: $restart, updateText: $updateText, state: $state, issued: $issued, updated: $updated)";
 }
 
+class PackageKitTransactionEvent extends PackageKitEvent {
+  final DBusObjectPath objectPath;
+  final DateTime? timespec;
+  final bool? succeeded;
+  final PackageKitRole role;
+  final Duration duration;
+  final String data;
+  final int? uid;
+  final String cmdline;
+
+  const PackageKitTransactionEvent(
+      {required this.objectPath,
+      this.timespec,
+      this.succeeded,
+      required this.role,
+      this.duration = Duration.zero,
+      this.data = '',
+      this.uid,
+      this.cmdline = ''});
+
+  @override
+  bool operator ==(other) {
+    if (identical(this, other)) return true;
+
+    return other is PackageKitTransactionEvent &&
+        other.objectPath == objectPath &&
+        other.timespec == timespec &&
+        other.succeeded == succeeded &&
+        other.role == role &&
+        other.duration == duration &&
+        other.data == data &&
+        other.uid == uid &&
+        other.cmdline == cmdline;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        objectPath,
+        timespec,
+        succeeded,
+        role,
+        duration,
+        data,
+        uid,
+        cmdline,
+      );
+
+  @override
+  String toString() =>
+      "$runtimeType(objectPath: '$objectPath', timespec: $timespec, succeeded: $succeeded, role: $role, duration: $duration, data: '$data', uid: $uid, cmdline: '$cmdline')";
+}
+
 /// A PackageKit transaction.
 class PackageKitTransaction {
   /// Remote transaction object.
@@ -1012,6 +1064,28 @@ class PackageKitTransaction {
               type: type,
               packageId:
                   PackageKitPackageId.fromString(signal.values[1].asString()));
+        case 'Transaction':
+          if (signal.signature != DBusSignature('osbuusus')) {
+            throw 'Invalid ${signal.name} signal';
+          }
+          var objectPath = signal.values[0].asObjectPath();
+          var timespec = _decodeDateTime(signal.values[1].asString());
+          var succeeded = signal.values[2].asBoolean();
+          var role = PackageKitRole.values[signal.values[3].asUint32()];
+          var duration = Duration(milliseconds: signal.values[4].asInt32());
+          var data = signal.values[5].asString();
+          var uid = signal.values[6].asUint32();
+          var cmdline = signal.values[7].asString();
+          return PackageKitTransactionEvent(
+            objectPath: objectPath,
+            timespec: timespec,
+            succeeded: succeeded,
+            role: role,
+            duration: duration,
+            data: data,
+            uid: uid,
+            cmdline: cmdline,
+          );
         case 'UpdateDetail':
           if (signal.signature != DBusSignature('sasasasasasussuss')) {
             throw 'Invalid ${signal.name} signal';
@@ -1120,6 +1194,15 @@ class PackageKitTransaction {
   Future<void> getFilesLocal(Iterable<String> paths) async {
     await _object.callMethod(_packageKitTransactionInterfaceName,
         'GetFilesLocal', [DBusArray.string(paths)],
+        replySignature: DBusSignature(''));
+  }
+
+  /// Gets details for past transactions.
+  /// number is the number of transactions to return, 0 to get all known transactions.
+  /// This method generates [PackageKitTransactionEvent] events.
+  Future<void> getOldTransactions({int number = 0}) async {
+    await _object.callMethod(_packageKitTransactionInterfaceName,
+        'GetOldTransactions', [DBusUint32(number)],
         replySignature: DBusSignature(''));
   }
 
