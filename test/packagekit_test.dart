@@ -463,6 +463,21 @@ class MockPackageKitTransaction extends DBusObject {
         }
         emitFinished(exitSuccess, server.transactionRuntime);
         return DBusMethodSuccessResponse();
+      case 'WhatProvides':
+        var codecStrings = methodCall.values[1].asStringArray();
+        for (var packages in server.availablePackages.values) {
+          for (var package in packages) {
+            if (package.provides.any((p) => codecStrings.contains(p))) {
+              emitPackage(
+                infoAvailable,
+                '${package.name};${package.version};${package.arch};available',
+                package.summary,
+              );
+            }
+          }
+        }
+        emitFinished(exitSuccess, server.transactionRuntime);
+        return DBusMethodSuccessResponse();
       case 'UpgradeSystem':
         var id = 'linux;2.0;arm64;installed';
         var summary = 'Linux kernel';
@@ -661,6 +676,7 @@ class MockPackage {
   final int updateState;
   final String updateIssued;
   final String updateUpdated;
+  final List<String> provides;
 
   const MockPackage(this.name, this.version,
       {this.arch = '',
@@ -682,7 +698,8 @@ class MockPackage {
       this.changelog = '',
       this.updateState = 0,
       this.updateIssued = '',
-      this.updateUpdated = ''});
+      this.updateUpdated = '',
+      this.provides = const []});
 }
 
 class MockPackageKitServer extends DBusClient {
@@ -1226,6 +1243,60 @@ void main() {
           PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
         ]));
     await transaction.resolve(['hello']);
+  });
+
+  test('whatProvides', () async {
+    var server = DBusServer();
+    addTearDown(() async => await server.close());
+    var clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    var packagekit = MockPackageKitServer(clientAddress,
+        transactionRuntime: 1234,
+        availablePackages: {
+          'package-not-provides': [
+            MockPackage('hello1', '2.10', arch: 'arm64', summary: '')
+          ],
+          'package-provides1': [
+            MockPackage('hello2', '2.10',
+                arch: 'arm64',
+                summary: '',
+                provides: ['gstreamer1(decoder-video/x-h265)()(64bit)']),
+          ],
+          'package-provides2': [
+            MockPackage('hello3', '2.10',
+                arch: 'arm64',
+                summary: '',
+                provides: ['gstreamer1(decoder-video/x-h265)()(64bit)']),
+          ],
+        });
+    addTearDown(() async => await packagekit.close());
+    await packagekit.start();
+
+    var client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => await client.close());
+    await client.connect();
+
+    var transaction = await client.createTransaction();
+    expect(
+        transaction.events,
+        emitsInOrder([
+          PackageKitPackageEvent(
+            info: PackageKitInfo.available,
+            packageId:
+                PackageKitPackageId.fromString('hello2;2.10;arm64;available'),
+            summary: '',
+          ),
+          PackageKitPackageEvent(
+            info: PackageKitInfo.available,
+            packageId:
+                PackageKitPackageId.fromString('hello3;2.10;arm64;available'),
+            summary: '',
+          ),
+          PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 1234)
+        ]));
+    await transaction
+        .whatProvides(['gstreamer1(decoder-video/x-h265)()(64bit)']);
   });
 
   test('get details', () async {
