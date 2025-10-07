@@ -1290,6 +1290,22 @@ class PackageKitTransaction {
         replySignature: DBusSignature(''));
   }
 
+  /// This method returns packages that provide the supplied attributes.
+  /// This method is useful for finding out what package(s) provide a modalias
+  /// or GStreamer codec string.
+  Future<void> whatProvides(Iterable<String> value,
+      {Set<PackageKitFilter> filter = const {}}) async {
+    await _object.callMethod(
+      _packageKitTransactionInterfaceName,
+      'WhatProvides',
+      [
+        DBusUint64(_encodeFilters(filter)),
+        DBusArray.string(value),
+      ],
+      replySignature: DBusSignature(''),
+    );
+  }
+
   /// Perform a distribution upgrade to the distribution given by [distroId].
   Future<void> upgradeSystem(
       String distroId, PackageKitDistroUpgrade upgradeKind,
