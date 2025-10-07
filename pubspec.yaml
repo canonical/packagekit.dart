@@ -1,5 +1,5 @@
 name: packagekit
-version: 0.2.6
+version: 0.2.7
 
 description:
   Provides a client to connect to PackageKit - the service that enables installation and removal of software packages on Linux.
@@ -20,4 +20,3 @@ dev_dependencies:
   lints: ^2.0.0
   test: ^1.16.8
   test_cov: ^1.0.1
-
