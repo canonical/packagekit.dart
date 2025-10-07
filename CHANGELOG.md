@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.7
+
+* Added WhatProvides implementation
+
 ## 0.2.6
 
 * Add missing PackageKitTransactionFlag.none.
