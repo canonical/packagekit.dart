@@ -137,8 +137,8 @@ enum PackageKitFilter {
 }
 
 Set<PackageKitFilter> _decodeFilters(int mask) {
-  var filters = <PackageKitFilter>{};
-  for (var value in PackageKitFilter.values) {
+  final filters = <PackageKitFilter>{};
+  for (final value in PackageKitFilter.values) {
     if ((mask & (1 << value.index)) != 0) {
       filters.add(value);
     }
@@ -148,7 +148,7 @@ Set<PackageKitFilter> _decodeFilters(int mask) {
 
 int _encodeFilters(Set<PackageKitFilter> filter) {
   var value = 0;
-  for (var f in filter) {
+  for (final f in filter) {
     value |= 1 << f.index;
   }
   return value;
@@ -200,8 +200,8 @@ PackageKitGroup _decodeGroup(int value) {
 }
 
 Set<PackageKitGroup> _decodeGroups(int mask) {
-  var groups = <PackageKitGroup>{};
-  for (var value in PackageKitGroup.values) {
+  final groups = <PackageKitGroup>{};
+  for (final value in PackageKitGroup.values) {
     if ((mask & (1 << value.index)) != 0) {
       groups.add(value);
     }
@@ -284,8 +284,8 @@ enum PackageKitRole {
 }
 
 Set<PackageKitRole> _decodeRoles(int mask) {
-  var roles = <PackageKitRole>{};
-  for (var value in PackageKitRole.values) {
+  final roles = <PackageKitRole>{};
+  for (final value in PackageKitRole.values) {
     if ((mask & (1 << value.index)) != 0) {
       roles.add(value);
     }
@@ -363,15 +363,15 @@ enum PackageKitTransactionFlag {
 
 int _encodeTransactionFlags(Set<PackageKitTransactionFlag> flags) {
   var value = 0;
-  for (var f in flags) {
+  for (final f in flags) {
     value |= 1 << f.index;
   }
   return value;
 }
 
 Set<PackageKitTransactionFlag> _decodeTransactionFlags(int value) {
-  var flags = <PackageKitTransactionFlag>{};
-  for (var f in PackageKitTransactionFlag.values) {
+  final flags = <PackageKitTransactionFlag>{};
+  for (final f in PackageKitTransactionFlag.values) {
     if ((1 << f.index) & value != 0) {
       flags.add(f);
     }
@@ -389,6 +389,27 @@ PackageKitUpdateState _decodeUpdateState(int value) =>
 
 /// An ID that uniquely identifies a package.
 class PackageKitPackageId {
+  const PackageKitPackageId({
+    required this.name,
+    required this.version,
+    this.arch = '',
+    this.data = '',
+  });
+
+  factory PackageKitPackageId.fromString(String value) {
+    final tokens = value.split(';');
+    if (tokens.length != 4) {
+      throw FormatException('Invalid number of components in Package ID');
+    }
+
+    return PackageKitPackageId(
+      name: tokens[0],
+      version: tokens[1],
+      arch: tokens[2],
+      data: tokens[3],
+    );
+  }
+
   /// The name of the package, e.g. "zenity".
   final String name;
 
@@ -400,24 +421,8 @@ class PackageKitPackageId {
 
   final String data;
 
-  const PackageKitPackageId(
-      {required this.name,
-      required this.version,
-      this.arch = '',
-      this.data = ''});
-
-  factory PackageKitPackageId.fromString(String value) {
-    var tokens = value.split(';');
-    if (tokens.length != 4) {
-      throw FormatException('Invalid number of components in Package ID');
-    }
-
-    return PackageKitPackageId(
-        name: tokens[0], version: tokens[1], arch: tokens[2], data: tokens[3]);
-  }
-
   @override
-  bool operator ==(other) {
+  bool operator ==(Object other) {
     if (identical(this, other)) return true;
 
     return other is PackageKitPackageId &&
@@ -443,13 +448,13 @@ class PackageKitEvent {
 
 /// An unknown event received from the backend.
 class PackageKitUnknownEvent extends PackageKitEvent {
+  PackageKitUnknownEvent(this.name, this.values);
+
   /// The name of the event.
   final String name;
 
   /// Information with the event.
   final List<DBusValue> values;
-
-  PackageKitUnknownEvent(this.name, this.values);
 
   @override
   String toString() => "$runtimeType('$name', $values)";
@@ -457,6 +462,16 @@ class PackageKitUnknownEvent extends PackageKitEvent {
 
 /// An event from the backend to give details about a package.
 class PackageKitDetailsEvent extends PackageKitEvent {
+  PackageKitDetailsEvent({
+    required this.packageId,
+    this.group = PackageKitGroup.unknown,
+    this.summary = '',
+    this.description = '',
+    this.url = '',
+    this.license = '',
+    this.size = 0,
+  });
+
   /// The ID of the package this event relates to.
   final PackageKitPackageId packageId;
 
@@ -478,17 +493,8 @@ class PackageKitDetailsEvent extends PackageKitEvent {
   /// The size of the package in bytes.
   final int size;
 
-  PackageKitDetailsEvent(
-      {required this.packageId,
-      this.group = PackageKitGroup.unknown,
-      this.summary = '',
-      this.description = '',
-      this.url = '',
-      this.license = '',
-      this.size = 0});
-
   @override
-  bool operator ==(other) {
+  bool operator ==(Object other) {
     if (identical(this, other)) return true;
 
     return other is PackageKitDetailsEvent &&
@@ -520,16 +526,16 @@ class PackageKitDestroyEvent extends PackageKitEvent {
 
 /// An event from the backend to pass a file list.
 class PackageKitFilesEvent extends PackageKitEvent {
+  PackageKitFilesEvent({required this.packageId, required this.fileList});
+
   /// The ID of the package this event relates to.
   final PackageKitPackageId packageId;
 
   /// List of filenames.
   final List<String> fileList;
 
-  PackageKitFilesEvent({required this.packageId, required this.fileList});
-
   @override
-  bool operator ==(other) {
+  bool operator ==(Object other) {
     if (identical(this, other)) return true;
     final listEquals = const DeepCollectionEquality().equals;
 
@@ -548,16 +554,16 @@ class PackageKitFilesEvent extends PackageKitEvent {
 
 /// An event from the backend to indicate an error occurred.
 class PackageKitErrorCodeEvent extends PackageKitEvent {
+  const PackageKitErrorCodeEvent({required this.code, required this.details});
+
   /// The type of error.
   final PackageKitError code;
 
   /// Long description of error, e.g. "failed to download package".
   final String details;
 
-  const PackageKitErrorCodeEvent({required this.code, required this.details});
-
   @override
-  bool operator ==(other) {
+  bool operator ==(Object other) {
     if (identical(this, other)) return true;
 
     return other is PackageKitErrorCodeEvent &&
@@ -574,16 +580,16 @@ class PackageKitErrorCodeEvent extends PackageKitEvent {
 
 /// An event from the backend to indicate the transaction has finished.
 class PackageKitFinishedEvent extends PackageKitEvent {
+  const PackageKitFinishedEvent({required this.exit, required this.runtime});
+
   /// The exit status of the transaction.
   final PackageKitExit exit;
 
   /// The amount of time in milliseconds that the transaction ran for.
   final int runtime;
 
-  const PackageKitFinishedEvent({required this.exit, required this.runtime});
-
   @override
-  bool operator ==(other) {
+  bool operator ==(Object other) {
     if (identical(this, other)) return true;
 
     return other is PackageKitFinishedEvent &&
@@ -600,6 +606,12 @@ class PackageKitFinishedEvent extends PackageKitEvent {
 
 /// An event from the backend to update the progress of the transaction.
 class PackageKitItemProgressEvent extends PackageKitEvent {
+  const PackageKitItemProgressEvent({
+    required this.packageId,
+    required this.status,
+    required this.percentage,
+  });
+
   /// The ID of the package this event relates to.
   final PackageKitPackageId packageId;
 
@@ -609,13 +621,8 @@ class PackageKitItemProgressEvent extends PackageKitEvent {
   /// The percentage of this package action is completed.
   final int percentage;
 
-  const PackageKitItemProgressEvent(
-      {required this.packageId,
-      required this.status,
-      required this.percentage});
-
   @override
-  bool operator ==(other) {
+  bool operator ==(Object other) {
     if (identical(this, other)) return true;
 
     return other is PackageKitItemProgressEvent &&
@@ -634,6 +641,12 @@ class PackageKitItemProgressEvent extends PackageKitEvent {
 
 /// An event from the backend to indicate a media change is required to get packages.
 class PackageKitMediaChangeRequiredEvent extends PackageKitEvent {
+  const PackageKitMediaChangeRequiredEvent({
+    required this.mediaType,
+    required this.mediaId,
+    required this.mediaText,
+  });
+
   /// The type of media required.
   final PackageKitMediaType mediaType;
 
@@ -643,13 +656,8 @@ class PackageKitMediaChangeRequiredEvent extends PackageKitEvent {
   /// A label that is on the media, e.g. "Fedora Disk 1".
   final String mediaText;
 
-  const PackageKitMediaChangeRequiredEvent(
-      {required this.mediaType,
-      required this.mediaId,
-      required this.mediaText});
-
   @override
-  bool operator ==(other) {
+  bool operator ==(Object other) {
     if (identical(this, other)) return true;
 
     return other is PackageKitMediaChangeRequiredEvent &&
@@ -668,6 +676,12 @@ class PackageKitMediaChangeRequiredEvent extends PackageKitEvent {
 
 /// An event from the backend to indicate a package.
 class PackageKitPackageEvent extends PackageKitEvent {
+  const PackageKitPackageEvent({
+    required this.info,
+    required this.packageId,
+    required this.summary,
+  });
+
   /// Information about this package.
   final PackageKitInfo info;
 
@@ -677,11 +691,8 @@ class PackageKitPackageEvent extends PackageKitEvent {
   /// The one line package summary, e.g. "Clipart for OpenOffice".
   final String summary;
 
-  const PackageKitPackageEvent(
-      {required this.info, required this.packageId, required this.summary});
-
   @override
-  bool operator ==(other) {
+  bool operator ==(Object other) {
     if (identical(this, other)) return true;
 
     return other is PackageKitPackageEvent &&
@@ -700,6 +711,12 @@ class PackageKitPackageEvent extends PackageKitEvent {
 
 /// An event from the backend to describe a repository on the system.
 class PackageKitRepositoryDetailEvent extends PackageKitEvent {
+  const PackageKitRepositoryDetailEvent({
+    required this.repoId,
+    required this.description,
+    required this.enabled,
+  });
+
   /// The ID of the repository.
   final String repoId;
 
@@ -709,11 +726,8 @@ class PackageKitRepositoryDetailEvent extends PackageKitEvent {
   /// True if the repository is enabled an in use.
   final bool enabled;
 
-  const PackageKitRepositoryDetailEvent(
-      {required this.repoId, required this.description, required this.enabled});
-
   @override
-  bool operator ==(other) {
+  bool operator ==(Object other) {
     if (identical(this, other)) return true;
 
     return other is PackageKitRepositoryDetailEvent &&
@@ -732,17 +746,19 @@ class PackageKitRepositoryDetailEvent extends PackageKitEvent {
 
 /// An event from the backend to indicate the something requires restarting to complete the transaction.
 class PackageKitRequireRestartEvent extends PackageKitEvent {
+  const PackageKitRequireRestartEvent({
+    required this.type,
+    required this.packageId,
+  });
+
   /// The type of restart required.
   final PackageKitRestart type;
 
   /// The ID of the package that caused the restart.
   final PackageKitPackageId packageId;
 
-  const PackageKitRequireRestartEvent(
-      {required this.type, required this.packageId});
-
   @override
-  bool operator ==(other) {
+  bool operator ==(Object other) {
     if (identical(this, other)) return true;
 
     return other is PackageKitRequireRestartEvent &&
@@ -759,6 +775,21 @@ class PackageKitRequireRestartEvent extends PackageKitEvent {
 
 /// An event from the backend to indicate the something requires restarting to complete the transaction.
 class PackageKitUpdateDetailEvent extends PackageKitEvent {
+  const PackageKitUpdateDetailEvent({
+    required this.packageId,
+    this.updates = const [],
+    this.obsoletes = const [],
+    this.vendorUrls = const [],
+    this.bugzillaUrls = const [],
+    this.cveUrls = const [],
+    this.restart = PackageKitRestart.unknown,
+    this.updateText = '',
+    this.changelog = '',
+    this.state = PackageKitUpdateState.unknown,
+    this.issued,
+    this.updated,
+  });
+
   /// The ID of the package this event relates to.
   final PackageKitPackageId packageId;
 
@@ -795,22 +826,8 @@ class PackageKitUpdateDetailEvent extends PackageKitEvent {
   /// The date that the update was updated.
   final DateTime? updated;
 
-  const PackageKitUpdateDetailEvent(
-      {required this.packageId,
-      this.updates = const [],
-      this.obsoletes = const [],
-      this.vendorUrls = const [],
-      this.bugzillaUrls = const [],
-      this.cveUrls = const [],
-      this.restart = PackageKitRestart.unknown,
-      this.updateText = '',
-      this.changelog = '',
-      this.state = PackageKitUpdateState.unknown,
-      this.issued,
-      this.updated});
-
   @override
-  bool operator ==(other) {
+  bool operator ==(Object other) {
     if (identical(this, other)) return true;
     final listEquals = const DeepCollectionEquality().equals;
 
@@ -829,16 +846,17 @@ class PackageKitUpdateDetailEvent extends PackageKitEvent {
 
   @override
   int get hashCode => Object.hash(
-      packageId,
-      Object.hashAll(updates),
-      Object.hashAll(obsoletes),
-      Object.hashAll(vendorUrls),
-      Object.hashAll(cveUrls),
-      restart,
-      updateText,
-      state,
-      issued,
-      updated);
+        packageId,
+        Object.hashAll(updates),
+        Object.hashAll(obsoletes),
+        Object.hashAll(vendorUrls),
+        Object.hashAll(cveUrls),
+        restart,
+        updateText,
+        state,
+        issued,
+        updated,
+      );
 
   @override
   String toString() =>
@@ -847,6 +865,170 @@ class PackageKitUpdateDetailEvent extends PackageKitEvent {
 
 /// A PackageKit transaction.
 class PackageKitTransaction {
+  /// Creates a PackageKit transaction from [objectPath].
+  /// This should not be accessed directly, use [PackageKitClient.getTransaction] to get an existing transaction, otherwise use [PackageKitClient.createTransaction].
+  PackageKitTransaction(DBusClient bus, DBusObjectPath objectPath)
+      : _object =
+            DBusRemoteObject(bus, name: _packageKitBusName, path: objectPath) {
+    events = DBusSignalStream(
+      bus,
+      sender: _packageKitBusName,
+      interface: _packageKitTransactionInterfaceName,
+      path: objectPath,
+    ).map((signal) {
+      switch (signal.name) {
+        case 'Details':
+          if (signal.signature != DBusSignature('a{sv}')) {
+            throw 'Invalid ${signal.name} signal';
+          }
+          final data = signal.values[0].asStringVariantDict();
+          return PackageKitDetailsEvent(
+            packageId: PackageKitPackageId.fromString(
+              data['package-id']?.asString() ?? '',
+            ),
+            group: _decodeGroup(data['group']?.asUint32() ?? 0),
+            summary: data['summary']?.asString() ?? '',
+            description: data['description']?.asString() ?? '',
+            url: data['url']?.asString() ?? '',
+            license: data['license']?.asString() ?? '',
+            size: data['size']?.asUint64() ?? 0,
+          );
+        case 'Destroy':
+          if (signal.signature != DBusSignature('')) {
+            throw 'Invalid ${signal.name} signal';
+          }
+          return PackageKitDestroyEvent();
+        case 'ErrorCode':
+          if (signal.signature != DBusSignature('us')) {
+            throw 'Invalid ${signal.name} signal';
+          }
+          final codeValue = signal.values[0].asUint32();
+          return PackageKitErrorCodeEvent(
+            code: codeValue < PackageKitError.values.length
+                ? PackageKitError.values[codeValue]
+                : PackageKitError.unknown,
+            details: signal.values[1].asString(),
+          );
+        case 'Files':
+          if (signal.signature != DBusSignature('sas')) {
+            throw 'Invalid ${signal.name} signal';
+          }
+          return PackageKitFilesEvent(
+            packageId:
+                PackageKitPackageId.fromString(signal.values[0].asString()),
+            fileList: signal.values[1].asStringArray().toList(),
+          );
+        case 'Finished':
+          if (signal.signature != DBusSignature('uu')) {
+            throw 'Invalid ${signal.name} signal';
+          }
+          final exitValue = signal.values[0].asUint32();
+          return PackageKitFinishedEvent(
+            exit: exitValue < PackageKitExit.values.length
+                ? PackageKitExit.values[exitValue]
+                : PackageKitExit.unknown,
+            runtime: signal.values[1].asUint32(),
+          );
+        case 'ItemProgress':
+          if (signal.signature != DBusSignature('suu')) {
+            throw 'Invalid ${signal.name} signal';
+          }
+          final statusValue = signal.values[1].asUint32();
+          return PackageKitItemProgressEvent(
+            packageId:
+                PackageKitPackageId.fromString(signal.values[0].asString()),
+            status: statusValue < PackageKitStatus.values.length
+                ? PackageKitStatus.values[statusValue]
+                : PackageKitStatus.unknown,
+            percentage: signal.values[2].asUint32(),
+          );
+        case 'MediaChangeRequired':
+          if (signal.signature != DBusSignature('uss')) {
+            throw 'Invalid ${signal.name} signal';
+          }
+          final mediaTypeValue = signal.values[0].asUint32();
+          return PackageKitMediaChangeRequiredEvent(
+            mediaType: mediaTypeValue < PackageKitMediaType.values.length
+                ? PackageKitMediaType.values[mediaTypeValue]
+                : PackageKitMediaType.unknown,
+            mediaId: signal.values[1].asString(),
+            mediaText: signal.values[2].asString(),
+          );
+        case 'Package':
+          if (signal.signature != DBusSignature('uss')) {
+            throw 'Invalid ${signal.name} signal';
+          }
+          final infoValue = signal.values[0].asUint32();
+          return PackageKitPackageEvent(
+            info: infoValue < PackageKitInfo.values.length
+                ? PackageKitInfo.values[infoValue]
+                : PackageKitInfo.unknown,
+            packageId:
+                PackageKitPackageId.fromString(signal.values[1].asString()),
+            summary: signal.values[2].asString(),
+          );
+        case 'RepoDetail':
+          if (signal.signature != DBusSignature('ssb')) {
+            throw 'Invalid ${signal.name} signal';
+          }
+          return PackageKitRepositoryDetailEvent(
+            repoId: signal.values[0].asString(),
+            description: signal.values[1].asString(),
+            enabled: signal.values[2].asBoolean(),
+          );
+        case 'RequireRestart':
+          if (signal.signature != DBusSignature('us')) {
+            throw 'Invalid ${signal.name} signal';
+          }
+          final type = _decodeRestart(signal.values[0].asUint32());
+          return PackageKitRequireRestartEvent(
+            type: type,
+            packageId:
+                PackageKitPackageId.fromString(signal.values[1].asString()),
+          );
+        case 'UpdateDetail':
+          if (signal.signature != DBusSignature('sasasasasasussuss')) {
+            throw 'Invalid ${signal.name} signal';
+          }
+          final packageId =
+              PackageKitPackageId.fromString(signal.values[0].asString());
+          final updates = signal.values[1]
+              .asStringArray()
+              .map((s) => PackageKitPackageId.fromString(s))
+              .toList();
+          final obsoletes = signal.values[2]
+              .asStringArray()
+              .map((s) => PackageKitPackageId.fromString(s))
+              .toList();
+          final vendorUrls = signal.values[3].asStringArray().toList();
+          final bugzillaUrls = signal.values[4].asStringArray().toList();
+          final cveUrls = signal.values[5].asStringArray().toList();
+          final restart = _decodeRestart(signal.values[6].asUint32());
+          final updateText = signal.values[7].asString();
+          final changelog = signal.values[8].asString();
+          final state = _decodeUpdateState(signal.values[9].asUint32());
+          final issued = _decodeDateTime(signal.values[10].asString());
+          final updated = _decodeDateTime(signal.values[11].asString());
+          return PackageKitUpdateDetailEvent(
+            packageId: packageId,
+            updates: updates,
+            obsoletes: obsoletes,
+            vendorUrls: vendorUrls,
+            bugzillaUrls: bugzillaUrls,
+            cveUrls: cveUrls,
+            restart: restart,
+            updateText: updateText,
+            changelog: changelog,
+            state: state,
+            issued: issued,
+            updated: updated,
+          );
+        default:
+          return PackageKitUnknownEvent(signal.name, signal.values);
+      }
+    });
+  }
+
   /// Remote transaction object.
   final DBusRemoteObject _object;
 
@@ -902,399 +1084,328 @@ class PackageKitTransaction {
   Stream<List<String>> get propertiesChanged =>
       _propertiesChangedController.stream;
 
-  /// Creates a PackageKit transaction from [objectPath].
-  /// This should not be accessed directly, use [PackageKitClient.getTransaction] to get an existing transaction, otherwise use [PackageKitClient.createTransaction].
-  PackageKitTransaction(DBusClient bus, DBusObjectPath objectPath)
-      : _object =
-            DBusRemoteObject(bus, name: _packageKitBusName, path: objectPath) {
-    events = DBusSignalStream(bus,
-            sender: _packageKitBusName,
-            interface: _packageKitTransactionInterfaceName,
-            path: objectPath)
-        .map((signal) {
-      switch (signal.name) {
-        case 'Details':
-          if (signal.signature != DBusSignature('a{sv}')) {
-            throw 'Invalid ${signal.name} signal';
-          }
-          var data = signal.values[0].asStringVariantDict();
-          return PackageKitDetailsEvent(
-              packageId: PackageKitPackageId.fromString(
-                  data['package-id']?.asString() ?? ''),
-              group: _decodeGroup(data['group']?.asUint32() ?? 0),
-              summary: data['summary']?.asString() ?? '',
-              description: data['description']?.asString() ?? '',
-              url: data['url']?.asString() ?? '',
-              license: data['license']?.asString() ?? '',
-              size: data['size']?.asUint64() ?? 0);
-        case 'Destroy':
-          if (signal.signature != DBusSignature('')) {
-            throw 'Invalid ${signal.name} signal';
-          }
-          return PackageKitDestroyEvent();
-        case 'ErrorCode':
-          if (signal.signature != DBusSignature('us')) {
-            throw 'Invalid ${signal.name} signal';
-          }
-          var codeValue = signal.values[0].asUint32();
-          return PackageKitErrorCodeEvent(
-              code: codeValue < PackageKitError.values.length
-                  ? PackageKitError.values[codeValue]
-                  : PackageKitError.unknown,
-              details: signal.values[1].asString());
-        case 'Files':
-          if (signal.signature != DBusSignature('sas')) {
-            throw 'Invalid ${signal.name} signal';
-          }
-          return PackageKitFilesEvent(
-              packageId:
-                  PackageKitPackageId.fromString(signal.values[0].asString()),
-              fileList: signal.values[1].asStringArray().toList());
-        case 'Finished':
-          if (signal.signature != DBusSignature('uu')) {
-            throw 'Invalid ${signal.name} signal';
-          }
-          var exitValue = signal.values[0].asUint32();
-          return PackageKitFinishedEvent(
-              exit: exitValue < PackageKitExit.values.length
-                  ? PackageKitExit.values[exitValue]
-                  : PackageKitExit.unknown,
-              runtime: signal.values[1].asUint32());
-        case 'ItemProgress':
-          if (signal.signature != DBusSignature('suu')) {
-            throw 'Invalid ${signal.name} signal';
-          }
-          var statusValue = signal.values[1].asUint32();
-          return PackageKitItemProgressEvent(
-              packageId:
-                  PackageKitPackageId.fromString(signal.values[0].asString()),
-              status: statusValue < PackageKitStatus.values.length
-                  ? PackageKitStatus.values[statusValue]
-                  : PackageKitStatus.unknown,
-              percentage: signal.values[2].asUint32());
-        case 'MediaChangeRequired':
-          if (signal.signature != DBusSignature('uss')) {
-            throw 'Invalid ${signal.name} signal';
-          }
-          var mediaTypeValue = signal.values[0].asUint32();
-          return PackageKitMediaChangeRequiredEvent(
-              mediaType: mediaTypeValue < PackageKitMediaType.values.length
-                  ? PackageKitMediaType.values[mediaTypeValue]
-                  : PackageKitMediaType.unknown,
-              mediaId: signal.values[1].asString(),
-              mediaText: signal.values[2].asString());
-        case 'Package':
-          if (signal.signature != DBusSignature('uss')) {
-            throw 'Invalid ${signal.name} signal';
-          }
-          var infoValue = signal.values[0].asUint32();
-          return PackageKitPackageEvent(
-              info: infoValue < PackageKitInfo.values.length
-                  ? PackageKitInfo.values[infoValue]
-                  : PackageKitInfo.unknown,
-              packageId:
-                  PackageKitPackageId.fromString(signal.values[1].asString()),
-              summary: signal.values[2].asString());
-        case 'RepoDetail':
-          if (signal.signature != DBusSignature('ssb')) {
-            throw 'Invalid ${signal.name} signal';
-          }
-          return PackageKitRepositoryDetailEvent(
-              repoId: signal.values[0].asString(),
-              description: signal.values[1].asString(),
-              enabled: signal.values[2].asBoolean());
-        case 'RequireRestart':
-          if (signal.signature != DBusSignature('us')) {
-            throw 'Invalid ${signal.name} signal';
-          }
-          var type = _decodeRestart(signal.values[0].asUint32());
-          return PackageKitRequireRestartEvent(
-              type: type,
-              packageId:
-                  PackageKitPackageId.fromString(signal.values[1].asString()));
-        case 'UpdateDetail':
-          if (signal.signature != DBusSignature('sasasasasasussuss')) {
-            throw 'Invalid ${signal.name} signal';
-          }
-          var packageId =
-              PackageKitPackageId.fromString(signal.values[0].asString());
-          var updates = signal.values[1]
-              .asStringArray()
-              .map((s) => PackageKitPackageId.fromString(s))
-              .toList();
-          var obsoletes = signal.values[2]
-              .asStringArray()
-              .map((s) => PackageKitPackageId.fromString(s))
-              .toList();
-          var vendorUrls = signal.values[3].asStringArray().toList();
-          var bugzillaUrls = signal.values[4].asStringArray().toList();
-          var cveUrls = signal.values[5].asStringArray().toList();
-          var restart = _decodeRestart(signal.values[6].asUint32());
-          var updateText = signal.values[7].asString();
-          var changelog = signal.values[8].asString();
-          var state = _decodeUpdateState(signal.values[9].asUint32());
-          var issued = _decodeDateTime(signal.values[10].asString());
-          var updated = _decodeDateTime(signal.values[11].asString());
-          return PackageKitUpdateDetailEvent(
-              packageId: packageId,
-              updates: updates,
-              obsoletes: obsoletes,
-              vendorUrls: vendorUrls,
-              bugzillaUrls: bugzillaUrls,
-              cveUrls: cveUrls,
-              restart: restart,
-              updateText: updateText,
-              changelog: changelog,
-              state: state,
-              issued: issued,
-              updated: updated);
-        default:
-          return PackageKitUnknownEvent(signal.name, signal.values);
-      }
-    });
-  }
-
   /// Cancel this transaction.
   Future<void> cancel() async {
-    await _object.callMethod(_packageKitTransactionInterfaceName, 'Cancel', [],
-        replySignature: DBusSignature(''));
+    await _object.callMethod(
+      _packageKitTransactionInterfaceName,
+      'Cancel',
+      [],
+      replySignature: DBusSignature(''),
+    );
   }
 
   /// Get the packages that the packages with [packageIds] depend on.
   /// This method generates a [PackageKitPackageEvent] event for each package that is depended on.
-  Future<void> dependsOn(Iterable<PackageKitPackageId> packageIds,
-      {Set<PackageKitFilter> filter = const {}, bool recursive = false}) async {
+  Future<void> dependsOn(
+    Iterable<PackageKitPackageId> packageIds, {
+    Set<PackageKitFilter> filter = const {},
+    bool recursive = false,
+  }) async {
     await _object.callMethod(
-        _packageKitTransactionInterfaceName,
-        'DependsOn',
-        [
-          DBusUint64(_encodeFilters(filter)),
-          DBusArray.string(packageIds.map((id) => id.toString())),
-          DBusBoolean(recursive)
-        ],
-        replySignature: DBusSignature(''));
+      _packageKitTransactionInterfaceName,
+      'DependsOn',
+      [
+        DBusUint64(_encodeFilters(filter)),
+        DBusArray.string(packageIds.map((id) => id.toString())),
+        DBusBoolean(recursive),
+      ],
+      replySignature: DBusSignature(''),
+    );
   }
 
   /// Gets the details for packages with [packageIds].
   /// This method generates a [PackageKitDetailsEvent] event for each package.
   Future<void> getDetails(Iterable<PackageKitPackageId> packageIds) async {
-    await _object.callMethod(_packageKitTransactionInterfaceName, 'GetDetails',
-        [DBusArray.string(packageIds.map((id) => id.toString()))],
-        replySignature: DBusSignature(''));
+    await _object.callMethod(
+      _packageKitTransactionInterfaceName,
+      'GetDetails',
+      [DBusArray.string(packageIds.map((id) => id.toString()))],
+      replySignature: DBusSignature(''),
+    );
   }
 
   /// Gets the details for local package files.
   /// The files are specified with their full [paths].
   /// This method generates a [PackageKitDetailsEvent] event for each package.
   Future<void> getDetailsLocal(Iterable<String> paths) async {
-    await _object.callMethod(_packageKitTransactionInterfaceName,
-        'GetDetailsLocal', [DBusArray.string(paths)],
-        replySignature: DBusSignature(''));
+    await _object.callMethod(
+      _packageKitTransactionInterfaceName,
+      'GetDetailsLocal',
+      [DBusArray.string(paths)],
+      replySignature: DBusSignature(''),
+    );
   }
 
   /// Downloads the packages with [packageIds] into a temporary directory.
   /// This method generates a [PackageKitFilesEvent] event for each package file that is downloaded.
-  Future<void> downloadPackages(Iterable<PackageKitPackageId> packageIds,
-      {bool storeInCache = false}) async {
+  Future<void> downloadPackages(
+    Iterable<PackageKitPackageId> packageIds, {
+    bool storeInCache = false,
+  }) async {
     await _object.callMethod(
-        _packageKitTransactionInterfaceName,
-        'DownloadPackages',
-        [
-          DBusBoolean(storeInCache),
-          DBusArray.string(packageIds.map((id) => id.toString()))
-        ],
-        replySignature: DBusSignature(''));
+      _packageKitTransactionInterfaceName,
+      'DownloadPackages',
+      [
+        DBusBoolean(storeInCache),
+        DBusArray.string(packageIds.map((id) => id.toString())),
+      ],
+      replySignature: DBusSignature(''),
+    );
   }
 
   /// Get the file lists for the packages with [packageIds].
   /// This method generates a [PackageKitFilesEvent] event for each file in these packages.
   Future<void> getFiles(Iterable<PackageKitPackageId> packageIds) async {
-    await _object.callMethod(_packageKitTransactionInterfaceName, 'GetFiles',
-        [DBusArray.string(packageIds.map((id) => id.toString()))],
-        replySignature: DBusSignature(''));
+    await _object.callMethod(
+      _packageKitTransactionInterfaceName,
+      'GetFiles',
+      [DBusArray.string(packageIds.map((id) => id.toString()))],
+      replySignature: DBusSignature(''),
+    );
   }
 
   /// Gets the details for local package files.
   /// The files are specified with their full [paths].
   /// This method generates a [PackageKitFilesEvent] event for each file in these packages.
   Future<void> getFilesLocal(Iterable<String> paths) async {
-    await _object.callMethod(_packageKitTransactionInterfaceName,
-        'GetFilesLocal', [DBusArray.string(paths)],
-        replySignature: DBusSignature(''));
+    await _object.callMethod(
+      _packageKitTransactionInterfaceName,
+      'GetFilesLocal',
+      [DBusArray.string(paths)],
+      replySignature: DBusSignature(''),
+    );
   }
 
   /// Gets all the available and installed packages.
   /// This method generates a [PackageKitPackageEvent] event for each package.
   Future<void> getPackages({Set<PackageKitFilter> filter = const {}}) async {
-    await _object.callMethod(_packageKitTransactionInterfaceName, 'GetPackages',
-        [DBusUint64(_encodeFilters(filter))],
-        replySignature: DBusSignature(''));
+    await _object.callMethod(
+      _packageKitTransactionInterfaceName,
+      'GetPackages',
+      [DBusUint64(_encodeFilters(filter))],
+      replySignature: DBusSignature(''),
+    );
   }
 
   /// Gets the list of repositories used in the system.
   /// This method generates a [PackageKitRepositoryDetailEvent] for each repository.
-  Future<void> getRepositoryList(
-      {Set<PackageKitFilter> filter = const {}}) async {
-    await _object.callMethod(_packageKitTransactionInterfaceName, 'GetRepoList',
-        [DBusUint64(_encodeFilters(filter))],
-        replySignature: DBusSignature(''));
+  Future<void> getRepositoryList({
+    Set<PackageKitFilter> filter = const {},
+  }) async {
+    await _object.callMethod(
+      _packageKitTransactionInterfaceName,
+      'GetRepoList',
+      [DBusUint64(_encodeFilters(filter))],
+      replySignature: DBusSignature(''),
+    );
   }
 
   /// Enable or disable the repository with the given [id].
   Future<void> setRepositoryEnabled(String id, bool enabled) async {
-    await _object.callMethod(_packageKitTransactionInterfaceName, 'RepoEnable',
-        [DBusString(id), DBusBoolean(enabled)],
-        replySignature: DBusSignature(''));
+    await _object.callMethod(
+      _packageKitTransactionInterfaceName,
+      'RepoEnable',
+      [DBusString(id), DBusBoolean(enabled)],
+      replySignature: DBusSignature(''),
+    );
   }
 
   /// Set a [parameter] on the repository with the given [id].
   Future<void> setRepositoryData(
-      String id, String parameter, String value) async {
-    await _object.callMethod(_packageKitTransactionInterfaceName, 'RepoSetData',
-        [DBusString(id), DBusString(parameter), DBusString(value)],
-        replySignature: DBusSignature(''));
+    String id,
+    String parameter,
+    String value,
+  ) async {
+    await _object.callMethod(
+      _packageKitTransactionInterfaceName,
+      'RepoSetData',
+      [DBusString(id), DBusString(parameter), DBusString(value)],
+      replySignature: DBusSignature(''),
+    );
   }
 
   /// Remove the repository with the given [id].
   /// If [autoremovePackages] is true, then packages installed from this repository are automatically removed.
-  Future<void> removeRepository(String id,
-      {bool autoremovePackages = false}) async {
-    var flags = 0;
-    await _object.callMethod(_packageKitTransactionInterfaceName, 'RepoRemove',
-        [DBusString(id), DBusUint64(flags), DBusBoolean(autoremovePackages)],
-        replySignature: DBusSignature(''));
+  Future<void> removeRepository(
+    String id, {
+    bool autoremovePackages = false,
+  }) async {
+    final flags = 0;
+    await _object.callMethod(
+      _packageKitTransactionInterfaceName,
+      'RepoRemove',
+      [DBusString(id), DBusUint64(flags), DBusBoolean(autoremovePackages)],
+      replySignature: DBusSignature(''),
+    );
   }
 
   /// Gets update information for packages with [packageIds].
   /// This method generates [PackageKitUpdateDetailEvent] events.
   Future<void> getUpdateDetail(Iterable<PackageKitPackageId> packageIds) async {
     await _object.callMethod(
-        _packageKitTransactionInterfaceName,
-        'GetUpdateDetail',
-        [DBusArray.string(packageIds.map((id) => id.toString()))],
-        replySignature: DBusSignature(''));
+      _packageKitTransactionInterfaceName,
+      'GetUpdateDetail',
+      [DBusArray.string(packageIds.map((id) => id.toString()))],
+      replySignature: DBusSignature(''),
+    );
   }
 
   /// Gets all the installed packages that can be upgraded.
   /// This method generates a [PackageKitPackageEvent] event for each package.
   Future<void> getUpdates({Set<PackageKitFilter> filter = const {}}) async {
-    await _object.callMethod(_packageKitTransactionInterfaceName, 'GetUpdates',
-        [DBusUint64(_encodeFilters(filter))],
-        replySignature: DBusSignature(''));
+    await _object.callMethod(
+      _packageKitTransactionInterfaceName,
+      'GetUpdates',
+      [DBusUint64(_encodeFilters(filter))],
+      replySignature: DBusSignature(''),
+    );
   }
 
   /// Install local package files onto the local system.
   /// The files are specified with their full [paths].
   /// This method generates a [PackageKitPackageEvent] event for each package that is installed.
-  Future<void> installFiles(Iterable<String> paths,
-      {Set<PackageKitTransactionFlag> transactionFlags = const {}}) async {
+  Future<void> installFiles(
+    Iterable<String> paths, {
+    Set<PackageKitTransactionFlag> transactionFlags = const {},
+  }) async {
     await _object.callMethod(
-        _packageKitTransactionInterfaceName,
-        'InstallFiles',
-        [
-          DBusUint64(_encodeTransactionFlags(transactionFlags)),
-          DBusArray.string(paths)
-        ],
-        replySignature: DBusSignature(''));
+      _packageKitTransactionInterfaceName,
+      'InstallFiles',
+      [
+        DBusUint64(_encodeTransactionFlags(transactionFlags)),
+        DBusArray.string(paths),
+      ],
+      replySignature: DBusSignature(''),
+    );
   }
 
   /// Install new packages with [packageIds] on the local system.
   /// This method generates a [PackageKitPackageEvent] event for each package that is installed.
-  Future<void> installPackages(Iterable<PackageKitPackageId> packageIds,
-      {Set<PackageKitTransactionFlag> transactionFlags = const {}}) async {
+  Future<void> installPackages(
+    Iterable<PackageKitPackageId> packageIds, {
+    Set<PackageKitTransactionFlag> transactionFlags = const {},
+  }) async {
     await _object.callMethod(
-        _packageKitTransactionInterfaceName,
-        'InstallPackages',
-        [
-          DBusUint64(_encodeTransactionFlags(transactionFlags)),
-          DBusArray.string(packageIds.map((id) => id.toString()))
-        ],
-        replySignature: DBusSignature(''));
+      _packageKitTransactionInterfaceName,
+      'InstallPackages',
+      [
+        DBusUint64(_encodeTransactionFlags(transactionFlags)),
+        DBusArray.string(packageIds.map((id) => id.toString())),
+      ],
+      replySignature: DBusSignature(''),
+    );
   }
 
   /// Fetch updated metadata for all enabled repositories.
   /// This method generates a [PackageKitRepositoryDetailEvent] event for each repository that is updated.
   Future<void> refreshCache({bool force = false}) async {
-    await _object.callMethod(_packageKitTransactionInterfaceName,
-        'RefreshCache', [DBusBoolean(force)],
-        replySignature: DBusSignature(''));
+    await _object.callMethod(
+      _packageKitTransactionInterfaceName,
+      'RefreshCache',
+      [DBusBoolean(force)],
+      replySignature: DBusSignature(''),
+    );
   }
 
   /// Remove packages with [packageIds] from the local system.
   /// This method generates a [PackageKitPackageEvent] event for each package that is removed.
-  Future<void> removePackages(Iterable<PackageKitPackageId> packageIds,
-      {Set<PackageKitTransactionFlag> transactionFlags = const {},
-      bool allowDeps = false,
-      bool autoremove = false}) async {
+  Future<void> removePackages(
+    Iterable<PackageKitPackageId> packageIds, {
+    Set<PackageKitTransactionFlag> transactionFlags = const {},
+    bool allowDeps = false,
+    bool autoremove = false,
+  }) async {
     await _object.callMethod(
-        _packageKitTransactionInterfaceName,
-        'RemovePackages',
-        [
-          DBusUint64(_encodeTransactionFlags(transactionFlags)),
-          DBusArray.string(packageIds.map((id) => id.toString())),
-          DBusBoolean(allowDeps),
-          DBusBoolean(autoremove)
-        ],
-        replySignature: DBusSignature(''));
+      _packageKitTransactionInterfaceName,
+      'RemovePackages',
+      [
+        DBusUint64(_encodeTransactionFlags(transactionFlags)),
+        DBusArray.string(packageIds.map((id) => id.toString())),
+        DBusBoolean(allowDeps),
+        DBusBoolean(autoremove),
+      ],
+      replySignature: DBusSignature(''),
+    );
   }
 
   /// Resolved the named [packages] into package IDs.
   /// This method generates a [PackageKitPackageEvent] event for each package.
-  Future<void> resolve(Iterable<String> packages,
-      {Set<PackageKitTransactionFlag> transactionFlags = const {}}) async {
+  Future<void> resolve(
+    Iterable<String> packages, {
+    Set<PackageKitTransactionFlag> transactionFlags = const {},
+  }) async {
     await _object.callMethod(
-        _packageKitTransactionInterfaceName,
-        'Resolve',
-        [
-          DBusUint64(_encodeTransactionFlags(transactionFlags)),
-          DBusArray.string(packages)
-        ],
-        replySignature: DBusSignature(''));
+      _packageKitTransactionInterfaceName,
+      'Resolve',
+      [
+        DBusUint64(_encodeTransactionFlags(transactionFlags)),
+        DBusArray.string(packages),
+      ],
+      replySignature: DBusSignature(''),
+    );
   }
 
   /// Search the package database by for packages that provide the files given in [values].
   /// This method generates a [PackageKitPackageEvent] event for each package found.
-  Future<void> searchFiles(Iterable<String> values,
-      {Set<PackageKitFilter> filter = const {}}) async {
-    await _object.callMethod(_packageKitTransactionInterfaceName, 'SearchFiles',
-        [DBusUint64(_encodeFilters(filter)), DBusArray.string(values)],
-        replySignature: DBusSignature(''));
+  Future<void> searchFiles(
+    Iterable<String> values, {
+    Set<PackageKitFilter> filter = const {},
+  }) async {
+    await _object.callMethod(
+      _packageKitTransactionInterfaceName,
+      'SearchFiles',
+      [DBusUint64(_encodeFilters(filter)), DBusArray.string(values)],
+      replySignature: DBusSignature(''),
+    );
   }
 
   /// Search the package database by for packages with the search terms given in [values].
   /// This method generates a [PackageKitPackageEvent] event for each package found.
-  Future<void> searchNames(Iterable<String> values,
-      {Set<PackageKitFilter> filter = const {}}) async {
-    await _object.callMethod(_packageKitTransactionInterfaceName, 'SearchNames',
-        [DBusUint64(_encodeFilters(filter)), DBusArray.string(values)],
-        replySignature: DBusSignature(''));
+  Future<void> searchNames(
+    Iterable<String> values, {
+    Set<PackageKitFilter> filter = const {},
+  }) async {
+    await _object.callMethod(
+      _packageKitTransactionInterfaceName,
+      'SearchNames',
+      [DBusUint64(_encodeFilters(filter)), DBusArray.string(values)],
+      replySignature: DBusSignature(''),
+    );
   }
 
   Future<void> _setHints(Iterable<String> hints) async {
-    await _object.callMethod(_packageKitTransactionInterfaceName, 'SetHints',
-        [DBusArray.string(hints)],
-        replySignature: DBusSignature(''));
+    await _object.callMethod(
+      _packageKitTransactionInterfaceName,
+      'SetHints',
+      [DBusArray.string(hints)],
+      replySignature: DBusSignature(''),
+    );
   }
 
   /// Update existing packages on the local system.
   /// This method generates a [PackageKitPackageEvent] event for each package being updated.
-  Future<void> updatePackages(Iterable<PackageKitPackageId> packageIds,
-      {Set<PackageKitTransactionFlag> transactionFlags = const {}}) async {
+  Future<void> updatePackages(
+    Iterable<PackageKitPackageId> packageIds, {
+    Set<PackageKitTransactionFlag> transactionFlags = const {},
+  }) async {
     await _object.callMethod(
-        _packageKitTransactionInterfaceName,
-        'UpdatePackages',
-        [
-          DBusUint64(_encodeTransactionFlags(transactionFlags)),
-          DBusArray.string(packageIds.map((id) => id.toString()))
-        ],
-        replySignature: DBusSignature(''));
+      _packageKitTransactionInterfaceName,
+      'UpdatePackages',
+      [
+        DBusUint64(_encodeTransactionFlags(transactionFlags)),
+        DBusArray.string(packageIds.map((id) => id.toString())),
+      ],
+      replySignature: DBusSignature(''),
+    );
   }
 
   /// This method returns packages that provide the supplied attributes.
   /// This method is useful for finding out what package(s) provide a modalias
   /// or GStreamer codec string.
-  Future<void> whatProvides(Iterable<String> value,
-      {Set<PackageKitFilter> filter = const {}}) async {
+  Future<void> whatProvides(
+    Iterable<String> value, {
+    Set<PackageKitFilter> filter = const {},
+  }) async {
     await _object.callMethod(
       _packageKitTransactionInterfaceName,
       'WhatProvides',
@@ -1308,17 +1419,20 @@ class PackageKitTransaction {
 
   /// Perform a distribution upgrade to the distribution given by [distroId].
   Future<void> upgradeSystem(
-      String distroId, PackageKitDistroUpgrade upgradeKind,
-      {Set<PackageKitTransactionFlag> transactionFlags = const {}}) async {
+    String distroId,
+    PackageKitDistroUpgrade upgradeKind, {
+    Set<PackageKitTransactionFlag> transactionFlags = const {},
+  }) async {
     await _object.callMethod(
-        _packageKitTransactionInterfaceName,
-        'UpgradeSystem',
-        [
-          DBusUint64(_encodeTransactionFlags(transactionFlags)),
-          DBusString(distroId),
-          DBusUint32(upgradeKind.index)
-        ],
-        replySignature: DBusSignature(''));
+      _packageKitTransactionInterfaceName,
+      'UpgradeSystem',
+      [
+        DBusUint64(_encodeTransactionFlags(transactionFlags)),
+        DBusString(distroId),
+        DBusUint32(upgradeKind.index),
+      ],
+      replySignature: DBusSignature(''),
+    );
   }
 
   void _updateProperties(Map<String, DBusValue> properties) {
@@ -1329,6 +1443,17 @@ class PackageKitTransaction {
 
 /// A client that connects to PackageKit.
 class PackageKitClient {
+  /// Creates a new PackageKit client connected to the system D-Bus.
+  PackageKitClient({DBusClient? bus})
+      : _bus = bus ?? DBusClient.system(),
+        _closeBus = bus == null {
+    _root = DBusRemoteObject(
+      _bus,
+      name: _packageKitBusName,
+      path: DBusObjectPath('/org/freedesktop/PackageKit'),
+    );
+  }
+
   /// The bus this client is connected to.
   final DBusClient _bus;
   final bool _closeBus;
@@ -1341,7 +1466,7 @@ class PackageKitClient {
 
   /// Properties on the root object.
   final _properties = <String, DBusValue>{};
-  StreamSubscription? _propertiesChangedSubscription;
+  StreamSubscription<DBusSignal>? _propertiesChangedSubscription;
   final _propertiesChangedController =
       StreamController<List<String>>.broadcast();
 
@@ -1351,7 +1476,7 @@ class PackageKitClient {
   bool idle = true;
   int cacheAge = 0xffffffff;
 
-  ///  The backend author, e.g. "Joe Bloggs <joe@blogs.com>"
+  ///  The backend author, e.g. "Joe Bloggs &lt;joe@blogs.com&gt;"
   String get backendAuthor => _properties['BackendAuthor']?.asString() ?? '';
 
   /// The backend description, e.g. "Yellow Dog Update Modifier"
@@ -1386,7 +1511,7 @@ class PackageKitClient {
   /// The network state from the daemon. This is provided as some clients may not want
   /// to use NetworkManager if the system daemon is configured to use something else.
   PackageKitNetworkState get networkState {
-    var value = _properties['NetworkState']?.asUint32() ?? 0;
+    final value = _properties['NetworkState']?.asUint32() ?? 0;
     return value < PackageKitNetworkState.values.length
         ? PackageKitNetworkState.values[value]
         : PackageKitNetworkState.unknown;
@@ -1405,15 +1530,6 @@ class PackageKitClient {
   Stream<List<String>> get propertiesChanged =>
       _propertiesChangedController.stream;
 
-  /// Creates a new PackageKit client connected to the system D-Bus.
-  PackageKitClient({DBusClient? bus})
-      : _bus = bus ?? DBusClient.system(),
-        _closeBus = bus == null {
-    _root = DBusRemoteObject(_bus,
-        name: _packageKitBusName,
-        path: DBusObjectPath('/org/freedesktop/PackageKit'));
-  }
-
   /// Connects to the PackageKit daemon.
   Future<void> connect() async {
     // Already connected
@@ -1421,20 +1537,21 @@ class PackageKitClient {
       return;
     }
 
-    _propertiesChangedSubscription = DBusSignalStream(_bus,
-            sender: _packageKitBusName,
-            interface: 'org.freedesktop.DBus.Properties')
-        .listen((signal) {
+    _propertiesChangedSubscription = DBusSignalStream(
+      _bus,
+      sender: _packageKitBusName,
+      interface: 'org.freedesktop.DBus.Properties',
+    ).listen((signal) {
       if (signal.signature != DBusSignature('sa{sv}as')) {
         return;
       }
 
-      var s = DBusPropertiesChangedSignal(signal);
+      final s = DBusPropertiesChangedSignal(signal);
       if (s.propertiesInterface == _packageKitInterfaceName &&
           s.path == _root.path) {
         _updateProperties(s.changedProperties);
       } else if (s.propertiesInterface == _packageKitTransactionInterfaceName) {
-        var transaction = _transactions[s.path];
+        final transaction = _transactions[s.path];
         transaction?._updateProperties(s.changedProperties);
       }
     });
@@ -1443,24 +1560,29 @@ class PackageKitClient {
 
   /// Get an existing transaction object at [path].
   Future<PackageKitTransaction> getTransaction(DBusObjectPath path) async {
-    var transaction = PackageKitTransaction(_bus, path);
+    final transaction = PackageKitTransaction(_bus, path);
     _transactions[path] = transaction;
 
-    transaction._updateProperties(await transaction._object
-        .getAllProperties(_packageKitTransactionInterfaceName));
+    transaction._updateProperties(
+      await transaction._object
+          .getAllProperties(_packageKitTransactionInterfaceName),
+    );
 
     return transaction;
   }
 
   /// Creates a new transaction that can have operations done on it.
   Future<PackageKitTransaction> createTransaction() async {
-    var result = await _root.callMethod(
-        _packageKitInterfaceName, 'CreateTransaction', [],
-        replySignature: DBusSignature('o'));
-    var transaction =
+    final result = await _root.callMethod(
+      _packageKitInterfaceName,
+      'CreateTransaction',
+      [],
+      replySignature: DBusSignature('o'),
+    );
+    final transaction =
         await getTransaction(result.returnValues[0].asObjectPath());
 
-    var hints = <String>[];
+    final hints = <String>[];
     if (locale != null) {
       hints.add('locale=$locale');
     }

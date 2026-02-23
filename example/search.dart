@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'dart:async';
 import 'package:packagekit/packagekit.dart';
 
@@ -6,24 +8,24 @@ void main(List<String> args) async {
     print('Need search type, e.g. name or file');
     return;
   }
-  var type = args[0];
+  final type = args[0];
 
   if (args.length < 2) {
     print('Need a search term');
   }
-  var terms = args.skip(1);
+  final terms = args.skip(1);
 
-  var client = PackageKitClient();
+  final client = PackageKitClient();
   await client.connect();
 
-  var transaction = await client.createTransaction();
-  var completer = Completer();
+  final transaction = await client.createTransaction();
+  final completer = Completer();
   transaction.events.listen((event) {
     if (event is PackageKitPackageEvent) {
-      var id = event.packageId;
-      var status = {
+      final id = event.packageId;
+      final status = {
             PackageKitInfo.available: 'Available',
-            PackageKitInfo.installed: 'Installed'
+            PackageKitInfo.installed: 'Installed',
           }[event.info] ??
           '         ';
       print('$status ${id.name}-${id.version}.${id.arch}');
