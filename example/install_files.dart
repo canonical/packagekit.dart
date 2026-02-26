@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'dart:async';
 import 'package:packagekit/packagekit.dart';
 
@@ -6,13 +8,13 @@ void main(List<String> args) async {
     print('Need package paths(s)');
     return;
   }
-  var paths = args;
+  final paths = args;
 
-  var client = PackageKitClient();
+  final client = PackageKitClient();
   await client.connect();
 
-  var installTransaction = await client.createTransaction();
-  var installCompleter = Completer();
+  final installTransaction = await client.createTransaction();
+  final installCompleter = Completer();
   installTransaction.events.listen((event) {
     if (event is PackageKitPackageEvent) {
       print('[${event.packageId.name}] ${event.info}');

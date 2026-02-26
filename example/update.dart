@@ -1,14 +1,16 @@
+// ignore_for_file: avoid_print
+
 import 'dart:async';
 import 'dart:io';
 import 'package:packagekit/packagekit.dart';
 
 void main(List<String> args) async {
-  var client = PackageKitClient();
+  final client = PackageKitClient();
   await client.connect();
 
-  var getUpdatesTransaction = await client.createTransaction();
-  var getUpdatesCompleter = Completer();
-  var packageIds = <PackageKitPackageId>[];
+  final getUpdatesTransaction = await client.createTransaction();
+  final getUpdatesCompleter = Completer();
+  final packageIds = <PackageKitPackageId>[];
   getUpdatesTransaction.events.listen((event) {
     if (event is PackageKitPackageEvent) {
       packageIds.add(event.packageId);
@@ -26,7 +28,7 @@ void main(List<String> args) async {
   }
 
   print('The following packages have updates:');
-  for (var id in packageIds) {
+  for (final id in packageIds) {
     print('${id.name}-${id.version}.${id.arch}');
   }
   print('Proceed with changes? [N/y]');
@@ -35,8 +37,8 @@ void main(List<String> args) async {
     return;
   }
 
-  var updatePackagesTransaction = await client.createTransaction();
-  var updatePackagesCompleter = Completer();
+  final updatePackagesTransaction = await client.createTransaction();
+  final updatePackagesCompleter = Completer();
   updatePackagesTransaction.events.listen((event) {
     if (event is PackageKitPackageEvent) {
       print('[${event.packageId.name}] ${event.info}');

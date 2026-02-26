@@ -1,12 +1,14 @@
+// ignore_for_file: avoid_print
+
 import 'dart:async';
 import 'package:packagekit/packagekit.dart';
 
 void main() async {
-  var client = PackageKitClient();
+  final client = PackageKitClient();
   await client.connect();
 
-  var transaction = await client.createTransaction();
-  var completer = Completer();
+  final transaction = await client.createTransaction();
+  final completer = Completer();
   transaction.events.listen((event) {
     if (event is PackageKitRepositoryDetailEvent) {
       print(event.description);
