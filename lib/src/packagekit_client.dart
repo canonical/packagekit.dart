@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:dbus/dbus.dart';
@@ -1470,7 +1471,10 @@ class PackageKitClient {
   final _propertiesChangedController =
       StreamController<List<String>>.broadcast();
 
-  String? locale;
+  /// The locale to use for this client's transactions, e.g. 'en_US.UTF-8'.
+  /// Defaults to [Platform.localeName] so that package descriptions are
+  /// returned in the correct encoding. Set to null to omit the hint entirely.
+  String? locale = Platform.localeName;
   bool background = false;
   bool interactive = true;
   bool idle = true;

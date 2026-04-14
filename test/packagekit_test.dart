@@ -1219,6 +1219,25 @@ void main() {
     expect(packagekit.lastCacheAge, equals(42));
   });
 
+  test('transaction hints default locale to Platform.localeName', () async {
+    final server = DBusServer();
+    addTearDown(() async => server.close());
+    final clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    final packagekit = MockPackageKitServer(clientAddress);
+    addTearDown(() async => packagekit.close());
+    await packagekit.start();
+
+    final client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => client.close());
+    await client.connect();
+
+    // Do NOT set client.locale — it should default to Platform.localeName.
+    await client.createTransaction();
+    expect(packagekit.lastLocale, equals(Platform.localeName));
+  });
+
   test('get packages', () async {
     final server = DBusServer();
     addTearDown(() async => server.close());
