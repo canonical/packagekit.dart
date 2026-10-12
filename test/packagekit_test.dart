@@ -769,7 +769,7 @@ class MockPackage {
 
 class MockPackageKitServer extends DBusClient {
   MockPackageKitServer(
-    DBusAddress clientAddress, {
+    super.clientAddress, {
     this.backendAuthor = '',
     this.backendDescription = '',
     this.backendName = '',
@@ -788,7 +788,7 @@ class MockPackageKitServer extends DBusClient {
     this.availablePackages = const {},
     this.installedPackages = const [],
     this.availableFiles = const {},
-  }) : super(clientAddress);
+  });
   late final MockPackageKitRoot _root;
 
   final String backendAuthor;
@@ -923,11 +923,11 @@ class MockPackageKitServer extends DBusClient {
 
 class MockTransactionObject extends DBusRemoteObject {
   MockTransactionObject(
-    DBusClient client, {
-    required String name,
-    required DBusObjectPath path,
+    super.client, {
+    required super.name,
+    required super.path,
     this.properties,
-  }) : super(client, name: name, path: path);
+  });
 
   Map<String, DBusValue>? properties;
 
