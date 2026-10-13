@@ -994,11 +994,11 @@ class PackageKitTransaction {
               PackageKitPackageId.fromString(signal.values[0].asString());
           final updates = signal.values[1]
               .asStringArray()
-              .map((s) => PackageKitPackageId.fromString(s))
+              .map(PackageKitPackageId.fromString)
               .toList();
           final obsoletes = signal.values[2]
               .asStringArray()
-              .map((s) => PackageKitPackageId.fromString(s))
+              .map(PackageKitPackageId.fromString)
               .toList();
           final vendorUrls = signal.values[3].asStringArray().toList();
           final bugzillaUrls = signal.values[4].asStringArray().toList();
