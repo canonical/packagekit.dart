@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.8
+
+* Default `PackageKitClient.locale` to `Platform.localeName` so that
+  package descriptions are returned in the correct UTF-8 encoding.
+
 ## 0.2.7
 
 * Added WhatProvides implementation

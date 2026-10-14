@@ -1219,6 +1219,79 @@ void main() {
     expect(packagekit.lastCacheAge, equals(42));
   });
 
+  test('transaction hints default locale to Platform.localeName', () async {
+    final server = DBusServer();
+    addTearDown(() async => server.close());
+    final clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    // Multi-byte Unicode chars (trademark, French accents, Cyrillic) that
+    // PackageKit corrupts to '???' when no locale hint is provided.
+    const unicodeSummary = 'Éditeur® de texte';
+    const unicodeDescription = 'Ùn éditeur simple. Редактор текста.';
+
+    final packagekit = MockPackageKitServer(
+      clientAddress,
+      availablePackages: {
+        'ubuntu-main': [
+          MockPackage(
+            'unicode-pkg',
+            '1.0',
+            arch: 'amd64',
+            summary: unicodeSummary,
+            description: unicodeDescription,
+          ),
+        ],
+      },
+    );
+    addTearDown(() async => packagekit.close());
+    await packagekit.start();
+
+    final client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => client.close());
+    await client.connect();
+
+    // locale defaults to Platform.localeName — no explicit assignment needed.
+    final packageId = PackageKitPackageId.fromString(
+      'unicode-pkg;1.0;amd64;ubuntu-main',
+    );
+    final transaction = await client.createTransaction();
+    expect(
+      transaction.events,
+      emitsInOrder([
+        PackageKitDetailsEvent(
+          packageId: packageId,
+          summary: unicodeSummary,
+          description: unicodeDescription,
+        ),
+        PackageKitFinishedEvent(exit: PackageKitExit.success, runtime: 0),
+      ]),
+    );
+    await transaction.getDetails([packageId]);
+
+    expect(packagekit.lastLocale, equals(Platform.localeName));
+  });
+
+  test('transaction with locale=null sends no locale hint', () async {
+    final server = DBusServer();
+    addTearDown(() async => server.close());
+    final clientAddress =
+        await server.listenAddress(DBusAddress.unix(dir: Directory.systemTemp));
+
+    final packagekit = MockPackageKitServer(clientAddress);
+    addTearDown(() async => packagekit.close());
+    await packagekit.start();
+
+    final client = PackageKitClient(bus: DBusClient(clientAddress));
+    addTearDown(() async => client.close());
+    await client.connect();
+
+    // locale=null opts out — PackageKit falls back to non-UTF-8 encoding.
+    client.locale = null;
+    await client.createTransaction();
+    expect(packagekit.lastLocale, isNull);
+  });
+
   test('get packages', () async {
     final server = DBusServer();
     addTearDown(() async => server.close());
