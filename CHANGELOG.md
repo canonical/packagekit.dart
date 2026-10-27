@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.8
+
+* Update dbus to 0.8.0.
+* Require Dart 3.0.
+
 ## 0.2.7
 
 * Added WhatProvides implementation
